@@ -34,10 +34,6 @@ class MetrolinxClient:
         """Returns detailed stop information"""
         return await self._get(f"Stop/Details/{stop_code}")
     
-    async def get_stop_destinations(self, stop_code: str, from_time: str, to_time: str):
-        """Returns destinations available from a stop within a time range"""
-        return await self._get(f"Stop/Destinations/{stop_code}/{from_time}/{to_time}")
-    
     # ========== Journey & Schedule Methods ==========
     
     async def get_journey(

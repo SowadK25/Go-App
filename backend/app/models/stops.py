@@ -21,25 +21,20 @@ class NextServiceLine(BaseModel):
     """Next service prediction for a line"""
     line_code: str
     line_name: str
-    direction: str
-    destination: str
-    scheduled_time: Optional[str] = None
-    predicted_time: Optional[str] = None
-    minutes_until: Optional[int] = None
-    is_delayed: bool = False
-    vehicle_type: Optional[str] = None  # "Train", "Bus", "UPX"
+    service_type: str  # "T" for Train, "B" for Bus, etc.
+    direction_name: str
+    scheduled_departure_time: str
+    computed_departure_time: Optional[str] = None
+    departure_status: Optional[str] = None
+    platform_number: Optional[str] = None  # ActualPlatform if available, else ScheduledPlatform
+    trip_order: Optional[int] = None
+    trip_number: Optional[str] = None
+    update_time: Optional[str] = None
+    status: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 class NextService(BaseModel):
     """Next service information for a stop"""
     stop_code: str
-    stop_name: str
     lines: List[NextServiceLine]
-
-class Destination(BaseModel):
-    """Destination available from a stop"""
-    stop_code: str
-    stop_name: str
-    line_code: str
-    line_name: str
-    direction: str
-

@@ -2,7 +2,7 @@
 Transform raw Metrolinx API responses into clean, frontend-friendly models
 """
 from typing import List, Dict, Any, Optional
-from app.models.stops import Stop, StopDetails, NextService, NextServicePrediction, Destination
+from app.models.stops import NextServiceLine, Stop, StopDetails, NextService
 from app.models.journeys import Journey, JourneyLeg, JourneyStop, JourneyResponse, Fare, FareResponse
 from app.models.alerts import Alert, ServiceException, UnionDeparture
 from app.models.schedules import Line, LineSchedule, TripSchedule, TripStop
@@ -34,14 +34,13 @@ def transform_stop_details(raw_data: Dict[str, Any], stop_code: str) -> StopDeta
     stop_data = raw_data.get("Stop", {})
     
     # Build address from components
-    address_parts = []
+    address = ""
     if stop_data.get("StreetNumber"):
-        address_parts.append(stop_data.get("StreetNumber"))
+        address += f"{stop_data.get('StreetNumber')} "
     if stop_data.get("StreetName"):
-        address_parts.append(stop_data.get("StreetName"))
+        address += f"{stop_data.get('StreetName')}, "
     if stop_data.get("City"):
-        address_parts.append(stop_data.get("City"))
-    address = ", ".join(address_parts) if address_parts else None
+        address += stop_data.get("City")
     
     # Convert latitude/longitude from string to float if present
     latitude = None
@@ -82,32 +81,44 @@ def transform_next_service(raw_data: Dict[str, Any], stop_code: str) -> NextServ
         scheduled = line.get("ScheduledDepartureTime")
         computed = line.get("ComputedDepartureTime")
         
-        # Calculate minutes until arrival if we have a computed time
-        minutes_until = None
-        if computed:
+        # Platform number: use ActualPlatform if available, otherwise ScheduledPlatform
+        platform_number = line.get("ActualPlatform") or line.get("ScheduledPlatform")
+        
+        # Convert latitude/longitude from string to float if present
+        latitude = None
+        longitude = None
+        lat_val = line.get("Latitude")
+        lon_val = line.get("Longitude")
+        if lat_val and lat_val != -1.0:  # API uses -1.0 as null value
             try:
-                from datetime import datetime
-                pred_time = datetime.strptime(computed, "%H:%M:%S")
-                now = datetime.now()
-                minutes_until = int((pred_time - now).total_seconds() / 60)
-            except:
+                latitude = float(lat_val)
+            except (ValueError, TypeError):
+                pass
+        if lon_val and lon_val != -1.0:
+            try:
+                longitude = float(lon_val)
+            except (ValueError, TypeError):
                 pass
         
-        lines.append(NextServicePrediction(
+        lines.append(NextServiceLine(
             line_code=line.get("LineCode", ""),
             line_name=line.get("LineName", ""),
+            service_type=line.get("ServiceType", ""),
             direction_name=line.get("DirectionName", ""),
-            platform_number=line.get("ScheduledPlatform", ""),
             scheduled_departure_time=scheduled,
             computed_departure_time=computed,
-            minutes_until=minutes_until,
-            is_delayed=computed != scheduled if (computed and scheduled) else False,
-            vehicle_type=line.get("VehicleType", "Train")
+            departure_status=line.get("DepartureStatus"),
+            platform_number=platform_number,
+            trip_order=line.get("TripOrder"),
+            trip_number=line.get("TripNumber"),
+            update_time=line.get("UpdateTime"),
+            status=line.get("Status", ""),
+            latitude=latitude,
+            longitude=longitude
         ))
     
     return NextService(
         stop_code=stop_code,
-        stop_name=raw_data.get("StopName", ""),
         lines=lines
     )
 
