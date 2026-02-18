@@ -2,48 +2,40 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 
 class JourneyStop(BaseModel):
-    """Stop within a journey leg"""
-    stop_code: str
-    stop_name: str
-    scheduled_arrival: Optional[str] = None
-    scheduled_departure: Optional[str] = None
-    predicted_arrival: Optional[str] = None
-    predicted_departure: Optional[str] = None
+    """Stop timeline item"""
+    code: str
+    order: Optional[int] = None
+    time: Optional[str] = None
+    is_major: bool = True
 
-class JourneyLeg(BaseModel):
-    """A single leg of a journey (one trip)"""
-    line_code: str
-    line_name: str
+class JourneyTrip(BaseModel):
+    """Single trip segment used in a journey option"""
+    number: str
+    display: str
+    line: str
     direction: str
-    trip_number: Optional[str] = None
-    vehicle_type: str  # "Train", "Bus", "UPX"
-    from_stop: JourneyStop
-    to_stop: JourneyStop
+    vehicle_type: str
+    depart_from_code: str
+    destination_stop_code: str
     stops: List[JourneyStop] = Field(default_factory=list)
-    duration_minutes: Optional[int] = None
 
-class Journey(BaseModel):
-    """A complete journey option"""
-    journey_id: Optional[str] = None
-    from_stop_code: str
-    from_stop_name: str
-    to_stop_code: str
-    to_stop_name: str
-    departure_time: str
-    arrival_time: str
-    duration_minutes: Optional[int] = None
-    legs: List[JourneyLeg]
-    transfers: int = 0
-    fare: Optional[float] = None
-    fare_currency: str = "CAD"
+class JourneyService(BaseModel):
+    """Journey option with one or more legs"""
+    trip_hash: Optional[str] = None
+    color: Optional[str] = None
+    start_time: str
+    end_time: str
+    duration: Optional[str] = None
+    transfer_count: int = 0
+    trips: List[JourneyTrip] = Field(default_factory=list)
 
 class JourneyResponse(BaseModel):
-    """Response containing journey options"""
+    """Scheduled journey list"""
     from_stop: str
     to_stop: str
     date: str
     start_time: str
-    journeys: List[Journey]
+    journeys: List[JourneyService]
 
 class Fare(BaseModel):
     """Fare information"""

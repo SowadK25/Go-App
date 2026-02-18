@@ -3,7 +3,7 @@ Transform raw Metrolinx API responses into clean, frontend-friendly models
 """
 from typing import List, Dict, Any, Optional
 from app.models.stops import NextServiceLine, Stop, StopDetails, NextService
-from app.models.journeys import Journey, JourneyLeg, JourneyStop, JourneyResponse, Fare, FareResponse
+from app.models.journeys import JourneyResponse, JourneyService, JourneyTrip, JourneyStop, Fare, FareResponse
 from app.models.alerts import Alert, ServiceException, UnionDeparture
 from app.models.schedules import Line, LineSchedule, TripSchedule, TripStop
 
@@ -124,79 +124,84 @@ def transform_next_service(raw_data: Dict[str, Any], stop_code: str) -> NextServ
 
 
 def transform_journey(raw_data: Dict[str, Any], from_stop: str, to_stop: str, date: str, start_time: str) -> JourneyResponse:
-    """Transform raw journey data into JourneyResponse model"""
+    """Transform SchJourneys response into a compact frontend model."""
     journeys = []
-    
-    # Structure depends on actual API response
-    journeys_data = raw_data.get("Journeys", {}).get("Journey", [])
-    if not isinstance(journeys_data, list):
-        journeys_data = [journeys_data] if journeys_data else []
-    
-    for journey_data in journeys_data:
-        legs = []
-        legs_data = journey_data.get("Legs", {}).get("Leg", [])
-        if not isinstance(legs_data, list):
-            legs_data = [legs_data] if legs_data else []
-        
-        for leg_data in legs_data:
-            from_stop_data = leg_data.get("FromStop", {})
-            to_stop_data = leg_data.get("ToStop", {})
-            
-            stops = []
-            stops_data = leg_data.get("Stops", {}).get("Stop", [])
-            if not isinstance(stops_data, list):
-                stops_data = [stops_data] if stops_data else []
-            
-            for stop_data in stops_data:
-                stops.append(JourneyStop(
-                    stop_code=stop_data.get("StopCode", ""),
-                    stop_name=stop_data.get("StopName", ""),
-                    scheduled_arrival=stop_data.get("ScheduledArrival"),
-                    scheduled_departure=stop_data.get("ScheduledDeparture"),
-                    predicted_arrival=stop_data.get("PredictedArrival"),
-                    predicted_departure=stop_data.get("PredictedDeparture")
+
+    def _as_list(value: Any) -> List[Any]:
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return value
+        return [value]
+
+    sch_journeys = _as_list(raw_data.get("SchJourneys"))
+
+    response_date = date
+    response_from_stop = from_stop
+    response_to_stop = to_stop
+    response_start_time = start_time
+
+    for sch in sch_journeys:
+        if not isinstance(sch, dict):
+            continue
+
+        response_date = sch.get("Date") or response_date
+        response_from_stop = sch.get("From") or response_from_stop
+        response_to_stop = sch.get("To") or response_to_stop
+        response_start_time = sch.get("Time") or response_start_time
+
+        services = _as_list(sch.get("Services"))
+        for service in services:
+            if not isinstance(service, dict):
+                continue
+
+            legs = []
+            trips = _as_list(service.get("Trips", {}).get("Trip"))
+
+            for trip in trips:
+                if not isinstance(trip, dict):
+                    continue
+
+                raw_stops = _as_list(trip.get("Stops", {}).get("Stop"))
+                raw_stops = [stop for stop in raw_stops if isinstance(stop, dict)]
+                raw_stops.sort(key=lambda stop: stop.get("Order", 0))
+
+                stops = [
+                    JourneyStop(
+                        code=stop.get("Code", ""),
+                        order=stop.get("Order"),
+                        time=stop.get("Time"),
+                        is_major=bool(stop.get("IsMajor", False))
+                    )
+                    for stop in raw_stops
+                ]
+
+                legs.append(JourneyTrip(
+                    number=trip.get("Number", ""),
+                    display=trip.get("Display", ""),
+                    line=trip.get("Line", ""),
+                    direction=trip.get("Direction", ""),
+                    vehicle_type=trip.get("Type", ""),
+                    depart_from_code=trip.get("departFromCode", ""),
+                    destination_stop_code=trip.get("destinationStopCode", ""),
+                    stops=stops
                 ))
-            
-            legs.append(JourneyLeg(
-                line_code=leg_data.get("LineCode", ""),
-                line_name=leg_data.get("LineName", ""),
-                direction=leg_data.get("Direction", ""),
-                trip_number=leg_data.get("TripNumber"),
-                vehicle_type=leg_data.get("VehicleType", "Train"),
-                from_stop=JourneyStop(
-                    stop_code=from_stop_data.get("StopCode", ""),
-                    stop_name=from_stop_data.get("StopName", ""),
-                    scheduled_departure=from_stop_data.get("ScheduledDeparture")
-                ),
-                to_stop=JourneyStop(
-                    stop_code=to_stop_data.get("StopCode", ""),
-                    stop_name=to_stop_data.get("StopName", ""),
-                    scheduled_arrival=to_stop_data.get("ScheduledArrival")
-                ),
-                stops=stops,
-                duration_minutes=leg_data.get("DurationMinutes")
+
+            journeys.append(JourneyService(
+                trip_hash=service.get("tripHash"),
+                color=service.get("Colour"),
+                start_time=service.get("StartTime", ""),
+                end_time=service.get("EndTime", ""),
+                duration=service.get("Duration"),
+                transfer_count=service.get("transferCount", max(0, len(legs) - 1)),
+                trips=legs
             ))
-        
-        journeys.append(Journey(
-            journey_id=journey_data.get("JourneyId"),
-            from_stop_code=from_stop,
-            from_stop_name=journey_data.get("FromStopName", ""),
-            to_stop_code=to_stop,
-            to_stop_name=journey_data.get("ToStopName", ""),
-            departure_time=journey_data.get("DepartureTime", ""),
-            arrival_time=journey_data.get("ArrivalTime", ""),
-            duration_minutes=journey_data.get("DurationMinutes"),
-            legs=legs,
-            transfers=len(legs) - 1 if len(legs) > 0 else 0,
-            fare=journey_data.get("Fare"),
-            fare_currency="CAD"
-        ))
-    
+
     return JourneyResponse(
-        from_stop=from_stop,
-        to_stop=to_stop,
-        date=date,
-        start_time=start_time,
+        from_stop=response_from_stop,
+        to_stop=response_to_stop,
+        date=response_date,
+        start_time=response_start_time,
         journeys=journeys
     )
 
