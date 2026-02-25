@@ -5,7 +5,8 @@ from typing import List, Dict, Any, Optional
 from app.models.stops import NextServiceLine, Stop, StopDetails, NextService
 from app.models.journeys import JourneyResponse, JourneyService, JourneyTrip, JourneyStop, Fare, FareResponse
 from app.models.alerts import Alert, ServiceException, UnionDeparture
-from app.models.schedules import Line, LineSchedule, TripSchedule, TripStop, Variant, LineSummary, LinesAllResponse
+from app.models.schedules import LineSchedule, TripSchedule, TripStop, Variant, LineSummary, LinesAllResponse
+from app.utils.utils import format_date
 
 
 def transform_stops(raw_data: Dict[str, Any]) -> List[Stop]:
@@ -258,7 +259,7 @@ def transform_lines_all(raw_data: Dict[str, Any], schedule_date: str) -> LinesAl
         ))
 
     return LinesAllResponse(
-        date=schedule_date,
+        date=format_date(schedule_date),
         lines=lines_out
     )
 

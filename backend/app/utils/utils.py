@@ -14,3 +14,9 @@ def normalize_time(value: str) -> str:
     if len(normalized) != TIME_MAX_CHARS:
         raise HTTPException(status_code=422, detail="start_time must be in HHMM or HH:MM format")
     return normalized
+
+def format_date(value: str) -> str:
+        digits = "".join(ch for ch in str(value) if ch.isdigit())
+        if len(digits) == DATE_MAX_CHARS:
+            return f"{digits[0:4]}-{digits[4:6]}-{digits[6:8]}"
+        return value

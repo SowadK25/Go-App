@@ -7,14 +7,6 @@ class Variant(BaseModel):
     display: str
     direction: str
 
-class Line(BaseModel):
-    """Line information"""
-    code: str
-    name: str
-    direction: str
-    vehicle_type: str  # "Train", "Bus"
-    variant: List[Variant] = Field(default_factory=list)
-
 class LineSummary(BaseModel):
     """Line summary for Schedule/Line/All"""
     code: str
