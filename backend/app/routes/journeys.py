@@ -4,21 +4,10 @@ from typing import Optional
 from app.clients.metrolinx import MetrolinxClient
 from app.models.journeys import JourneyResponse, FareResponse
 from app import transformers as transform
+from app.utils.utils import normalize_date, normalize_time
 
 router = APIRouter(prefix="/api/journeys", tags=["journeys"])
 client = MetrolinxClient()
-
-def _normalize_date(value: str) -> str:
-    normalized = "".join(ch for ch in value if ch.isdigit())
-    if len(normalized) != 8:
-        raise HTTPException(status_code=422, detail="journey_date must be in YYYYMMDD or YYYY-MM-DD format")
-    return normalized
-
-def _normalize_time(value: str) -> str:
-    normalized = "".join(ch for ch in value if ch.isdigit())
-    if len(normalized) != 4:
-        raise HTTPException(status_code=422, detail="start_time must be in HHMM or HH:MM format")
-    return normalized
 
 async def _fetch_journeys(from_stop: str, to_stop: str, journey_date: str, start_time: str, max_journeys: int) -> JourneyResponse:
     try:
@@ -45,8 +34,8 @@ async def get_journeys(
     start_time: str = Path(..., description="Start time in HHMM or HH:MM format"),
     max_journeys: int = Query(5, ge=1, le=10, description="Maximum number of journey options to return")
 ):
-    journey_date = _normalize_date(journey_date)
-    start_time = _normalize_time(start_time)
+    journey_date = normalize_date(journey_date)
+    start_time = normalize_time(start_time)
     return await _fetch_journeys(from_stop, to_stop, journey_date, start_time, max_journeys)
 
 @router.get("/fares", response_model=FareResponse)

@@ -1,12 +1,32 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List
 
+class Variant(BaseModel):
+    """Line variant (e.g. different routes for same line)"""
+    code: str
+    display: str
+    direction: str
+
 class Line(BaseModel):
     """Line information"""
     code: str
     name: str
     direction: str
-    vehicle_type: str  # "Train", "Bus", "UPX"
+    vehicle_type: str  # "Train", "Bus"
+    variant: List[Variant] = Field(default_factory=list)
+
+class LineSummary(BaseModel):
+    """Line summary for Schedule/Line/All"""
+    code: str
+    name: str
+    vehicle_types: List[str] = Field(default_factory=list)
+    directions: List[str] = Field(default_factory=list)
+    variants: List[Variant] = Field(default_factory=list)
+
+class LinesAllResponse(BaseModel):
+    """All lines in effect for a date"""
+    date: str
+    lines: List[LineSummary] = Field(default_factory=list)
 
 class LineStop(BaseModel):
     """Stop on a line"""

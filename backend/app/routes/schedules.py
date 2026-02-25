@@ -1,26 +1,26 @@
 import httpx
 from fastapi import APIRouter, Path, Query, HTTPException
-from typing import Optional, List
+from typing import Optional
 from datetime import date
 from app.clients.metrolinx import MetrolinxClient
-from app.models.schedules import Line, LineSchedule, TripSchedule
+from app.models.schedules import LinesAllResponse
+from app import transformers as transform
+from app.utils.utils import normalize_date
 
 router = APIRouter(prefix="/api/schedules", tags=["schedules"])
 client = MetrolinxClient()
 
-@router.get("/lines")
+@router.get("/lines", response_model=LinesAllResponse)
 async def get_lines(
-    schedule_date: Optional[str] = Query(None, description="Date in YYYY-MM-DD format (defaults to today)")
+    schedule_date: Optional[str] = Query(None, description="Date in YYYYMMDD format (defaults to today)")
 ):
     """Get all lines in effect for a date"""
     if schedule_date is None:
-        schedule_date = date.today().strftime("%Y-%m-%d")
+        schedule_date = normalize_date(date.today().strftime("%Y%m%d"))
     
     try:
         raw = await client.get_lines_all(schedule_date)
-        # Return raw for now - can add transformer if needed
-        # The structure depends on actual API response
-        return raw
+        return transform.transform_lines_all(raw, schedule_date)
     except httpx.HTTPStatusError as e:
         raise HTTPException(status_code=e.response.status_code, detail=str(e))
     except Exception as e:
@@ -30,11 +30,11 @@ async def get_lines(
 async def get_line_schedule(
     line_code: str = Path(..., description="Line code"),
     direction: str = Path(..., description="Line direction"),
-    schedule_date: Optional[str] = Query(None, description="Date in YYYY-MM-DD format (defaults to today)")
+    schedule_date: Optional[str] = Query(None, description="Date in YYYYMMDD format (defaults to today)")
 ):
     """Get line schedule details"""
     if schedule_date is None:
-        schedule_date = date.today().strftime("%Y-%m-%d")
+        schedule_date = normalize_date(date.today().strftime("%Y%m%d"))
     
     try:
         raw = await client.get_line_schedule(schedule_date, line_code, direction)
@@ -51,11 +51,11 @@ async def get_line_schedule(
 async def get_line_stops(
     line_code: str = Path(..., description="Line code"),
     direction: str = Path(..., description="Line direction"),
-    schedule_date: Optional[str] = Query(None, description="Date in YYYY-MM-DD format (defaults to today)")
+    schedule_date: Optional[str] = Query(None, description="Date in YYYYMMDD format (defaults to today)")
 ):
     """Get stops for a line and direction"""
     if schedule_date is None:
-        schedule_date = date.today().strftime("%Y-%m-%d")
+        schedule_date = normalize_date(date.today().strftime("%Y%m%d"))
     
     try:
         raw = await client.get_line_stops(schedule_date, line_code, direction)
@@ -71,11 +71,11 @@ async def get_line_stops(
 @router.get("/trips/{trip_number}")
 async def get_trip_schedule(
     trip_number: str = Path(..., description="Trip number"),
-    schedule_date: Optional[str] = Query(None, description="Date in YYYY-MM-DD format (defaults to today)")
+    schedule_date: Optional[str] = Query(None, description="Date in YYYYMMDD format (defaults to today)")
 ):
     """Get trip details with all stops"""
     if schedule_date is None:
-        schedule_date = date.today().strftime("%Y-%m-%d")
+        schedule_date = normalize_date(date.today().strftime("%Y%m%d"))
     
     try:
         raw = await client.get_trip_schedule(schedule_date, trip_number)

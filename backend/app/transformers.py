@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Optional
 from app.models.stops import NextServiceLine, Stop, StopDetails, NextService
 from app.models.journeys import JourneyResponse, JourneyService, JourneyTrip, JourneyStop, Fare, FareResponse
 from app.models.alerts import Alert, ServiceException, UnionDeparture
-from app.models.schedules import Line, LineSchedule, TripSchedule, TripStop
+from app.models.schedules import Line, LineSchedule, TripSchedule, TripStop, Variant, LineSummary, LinesAllResponse
 
 
 def transform_stops(raw_data: Dict[str, Any]) -> List[Stop]:
@@ -203,6 +203,63 @@ def transform_journey(raw_data: Dict[str, Any], from_stop: str, to_stop: str, da
         date=response_date,
         start_time=response_start_time,
         journeys=journeys
+    )
+
+
+def transform_lines_all(raw_data: Dict[str, Any], schedule_date: str) -> LinesAllResponse:
+    """Transform Schedule/Line/All response into frontend-friendly line summaries."""
+    def _as_list(value: Any) -> List[Any]:
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return value
+        return [value]
+
+    lines_out = []
+    raw_lines = _as_list(raw_data.get("AllLines", {}).get("Line"))
+
+    for raw_line in raw_lines:
+        if not isinstance(raw_line, dict):
+            continue
+
+        raw_variants = _as_list(raw_line.get("Variant"))
+        variants = []
+        directions = []
+
+        for raw_variant in raw_variants:
+            if not isinstance(raw_variant, dict):
+                continue
+
+            direction = raw_variant.get("Direction", "")
+            if direction and direction not in directions:
+                directions.append(direction)
+
+            variants.append(Variant(
+                code=raw_variant.get("Code", ""),
+                display=raw_variant.get("Display", ""),
+                direction=direction
+            ))
+
+        is_bus = bool(raw_line.get("IsBus", False))
+        is_train = bool(raw_line.get("IsTrain", False))
+
+        vehicle_types = []
+        if is_train:
+            vehicle_types.append("Train")
+        if is_bus:
+            vehicle_types.append("Bus")
+
+        lines_out.append(LineSummary(
+            code=raw_line.get("Code", ""),
+            name=raw_line.get("Name", ""),
+            vehicle_types=vehicle_types,
+            directions=directions,
+            variants=variants
+        ))
+
+    return LinesAllResponse(
+        date=schedule_date,
+        lines=lines_out
     )
 
 
