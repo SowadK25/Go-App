@@ -3,7 +3,7 @@ from fastapi import APIRouter, Path, Query, HTTPException
 from typing import Optional
 from datetime import date
 from app.clients.metrolinx import MetrolinxClient
-from app.models.schedules import LinesAllResponse, LineScheduleResponse
+from app.models.schedules import LinesAllResponse, LineScheduleResponse, LineStopsResponse
 from app import transformers as transform
 from app.utils.utils import normalize_date
 
@@ -28,7 +28,11 @@ async def get_lines(
         raise HTTPException(status_code=500, detail=f"Error fetching lines: {str(e)}")
 
 # Cacheable endpoint (only changes daily) - can also be cached by line_code+direction
-@router.get("/lines/{line_code}/{direction}", response_model=LineScheduleResponse)
+@router.get(
+    "/lines/{line_code}/{direction}",
+    response_model=LineScheduleResponse,
+    response_model_exclude_none=True,
+)
 async def get_line_schedule(
     line_code: str = Path(..., description="Line code"),
     direction: str = Path(..., description="Line direction"),
@@ -48,7 +52,12 @@ async def get_line_schedule(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching line schedule: {str(e)}")
 
-@router.get("/lines/{line_code}/{direction}/stops")
+# Cacheable endpoint (only changes daily) - can also be cached by line_code+direction
+@router.get(
+    "/lines/{line_code}/{direction}/stops",
+    response_model=LineStopsResponse,
+    response_model_exclude_none=True,
+)
 async def get_line_stops(
     line_code: str = Path(..., description="Line code"),
     direction: str = Path(..., description="Line direction"),
@@ -60,8 +69,7 @@ async def get_line_stops(
     
     try:
         raw = await client.get_line_stops(schedule_date, line_code, direction)
-        # Return raw for now - can add transformer if needed
-        return raw
+        return transform.transform_line_stops(raw, schedule_date, line_code, direction)
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 404:
             raise HTTPException(status_code=404, detail=f"Line {line_code} {direction} stops not found for date {schedule_date}")

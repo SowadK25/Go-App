@@ -6,15 +6,13 @@ from app.models.stops import NextServiceLine, Stop, StopDetails, NextService
 from app.models.journeys import JourneyResponse, JourneyService, JourneyTrip, JourneyStop, Fare, FareResponse
 from app.models.alerts import Alert, ServiceException, UnionDeparture
 from app.models.schedules import (
-    LineSchedule,
-    TripSchedule,
-    TripStop,
     Variant,
     LineSummary,
     LinesAllResponse,
     LineScheduleResponse,
     LineScheduleTrip,
-    LineScheduleStop,
+    LineRouteStop,
+    LineStopsResponse,
 )
 from app.utils.utils import format_date, as_list, trim_date_time
 
@@ -280,7 +278,7 @@ def transform_line_schedule(
         for stop in raw_stops:
             if not isinstance(stop, dict):
                 continue
-            stops_out.append(LineScheduleStop(
+            stops_out.append(LineRouteStop(
                 code=stop.get("Code", ""),
                 order=int(stop.get("Order", 0)),
                 time=trim_date_time(stop.get("Time", "")),
@@ -300,6 +298,40 @@ def transform_line_schedule(
         direction=selected_line.get("Direction", direction),
         vehicle_type=selected_line.get("Type", ""),
         trips=trips_out,
+    )
+
+
+def transform_line_stops(
+    raw_data: Dict[str, Any],
+    schedule_date: str,
+    line_code: str,
+    direction: str
+) -> LineStopsResponse:
+    """Transform Schedule/Line/Stop response into a compact, typed stop list."""
+    line = raw_data.get("Lines", {})
+    if not isinstance(line, dict):
+        line = {}
+
+    stops = []
+    for stop in as_list(line.get("Stop")):
+        if not isinstance(stop, dict):
+            continue
+        stops.append(LineRouteStop(
+            code=stop.get("Code", ""),
+            order=int(stop.get("Order", 0)),
+            name=stop.get("Name", ""),
+            stop_type=stop.get("Type", ""),
+            is_major=bool(stop.get("IsMajor", False)),
+        ))
+
+    stops.sort(key=lambda stop: stop.order)
+
+    return LineStopsResponse(
+        date=format_date(schedule_date),
+        line_code=line.get("Code", line_code),
+        direction=line.get("Direction", direction),
+        display=line.get("Display", ""),
+        stops=stops,
     )
 
 

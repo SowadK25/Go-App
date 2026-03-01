@@ -7,10 +7,8 @@ from .schedules import (
     LinesAllResponse,
     LineScheduleResponse,
     LineScheduleTrip,
-    LineScheduleStop,
-    LineSchedule,
-    TripSchedule,
-    TripStop,
+    LineRouteStop,
+    LineStopsResponse,
 )
 
 __all__ = [
@@ -31,9 +29,7 @@ __all__ = [
     "LinesAllResponse",
     "LineScheduleResponse",
     "LineScheduleTrip",
-    "LineScheduleStop",
-    "LineSchedule",
-    "TripSchedule",
-    "TripStop",
+    "LineRouteStop",
+    "LineStopsResponse",
 ]
 
