@@ -25,16 +25,42 @@ class LineStop(BaseModel):
     stop_code: str
     stop_name: str
     sequence: int
-    scheduled_time: Optional[str] = None
+    scheduled_time: str
+
+class LineScheduleStop(BaseModel):
+    """Stop in a scheduled line trip"""
+    code: str
+    order: int
+    time: str
+    is_major: bool = False
+
+class LineScheduleTrip(BaseModel):
+    """Single trip for a line+direction schedule"""
+    number: str
+    display: str
+    stops: List[LineScheduleStop] = Field(default_factory=list)
+
+class LineScheduleResponse(BaseModel):
+    """Schedule payload for /lines/{line_code}/{direction}"""
+    date: str
+    line_code: str
+    direction: str
+    vehicle_type: str
+    trips: List[LineScheduleTrip] = Field(default_factory=list)
+
+class Trip(BaseModel):
+    """Trip on a line"""
+    trip_number: str
+    display: str
+    stops: List[LineStop] = Field(default_factory=list)
 
 class LineSchedule(BaseModel):
     """Schedule for a line"""
     line_code: str
     line_name: str
     direction: str
-    date: str
-    trips: List[dict] = Field(default_factory=list)  # Will contain trip details
-
+    trips: List[Trip] = Field(default_factory=list)
+    
 class TripStop(BaseModel):
     """Stop on a trip"""
     stop_code: str

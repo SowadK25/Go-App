@@ -5,8 +5,18 @@ from typing import List, Dict, Any, Optional
 from app.models.stops import NextServiceLine, Stop, StopDetails, NextService
 from app.models.journeys import JourneyResponse, JourneyService, JourneyTrip, JourneyStop, Fare, FareResponse
 from app.models.alerts import Alert, ServiceException, UnionDeparture
-from app.models.schedules import LineSchedule, TripSchedule, TripStop, Variant, LineSummary, LinesAllResponse
-from app.utils.utils import format_date
+from app.models.schedules import (
+    LineSchedule,
+    TripSchedule,
+    TripStop,
+    Variant,
+    LineSummary,
+    LinesAllResponse,
+    LineScheduleResponse,
+    LineScheduleTrip,
+    LineScheduleStop,
+)
+from app.utils.utils import format_date, as_list, trim_date_time
 
 
 def transform_stops(raw_data: Dict[str, Any]) -> List[Stop]:
@@ -127,15 +137,7 @@ def transform_next_service(raw_data: Dict[str, Any], stop_code: str) -> NextServ
 def transform_journey(raw_data: Dict[str, Any], from_stop: str, to_stop: str, date: str, start_time: str) -> JourneyResponse:
     """Transform SchJourneys response into a compact frontend model."""
     journeys = []
-
-    def _as_list(value: Any) -> List[Any]:
-        if value is None:
-            return []
-        if isinstance(value, list):
-            return value
-        return [value]
-
-    sch_journeys = _as_list(raw_data.get("SchJourneys"))
+    sch_journeys = as_list(raw_data.get("SchJourneys"))
 
     response_date = date
     response_from_stop = from_stop
@@ -151,19 +153,19 @@ def transform_journey(raw_data: Dict[str, Any], from_stop: str, to_stop: str, da
         response_to_stop = sch.get("To") or response_to_stop
         response_start_time = sch.get("Time") or response_start_time
 
-        services = _as_list(sch.get("Services"))
+        services = as_list(sch.get("Services"))
         for service in services:
             if not isinstance(service, dict):
                 continue
 
             legs = []
-            trips = _as_list(service.get("Trips", {}).get("Trip"))
+            trips = as_list(service.get("Trips", {}).get("Trip"))
 
             for trip in trips:
                 if not isinstance(trip, dict):
                     continue
 
-                raw_stops = _as_list(trip.get("Stops", {}).get("Stop"))
+                raw_stops = as_list(trip.get("Stops", {}).get("Stop"))
                 raw_stops = [stop for stop in raw_stops if isinstance(stop, dict)]
                 raw_stops.sort(key=lambda stop: stop.get("Order", 0))
 
@@ -209,21 +211,14 @@ def transform_journey(raw_data: Dict[str, Any], from_stop: str, to_stop: str, da
 
 def transform_lines_all(raw_data: Dict[str, Any], schedule_date: str) -> LinesAllResponse:
     """Transform Schedule/Line/All response into frontend-friendly line summaries."""
-    def _as_list(value: Any) -> List[Any]:
-        if value is None:
-            return []
-        if isinstance(value, list):
-            return value
-        return [value]
-
     lines_out = []
-    raw_lines = _as_list(raw_data.get("AllLines", {}).get("Line"))
+    raw_lines = as_list(raw_data.get("AllLines", {}).get("Line"))
 
     for raw_line in raw_lines:
         if not isinstance(raw_line, dict):
             continue
 
-        raw_variants = _as_list(raw_line.get("Variant"))
+        raw_variants = as_list(raw_line.get("Variant"))
         variants = []
         directions = []
 
@@ -261,6 +256,50 @@ def transform_lines_all(raw_data: Dict[str, Any], schedule_date: str) -> LinesAl
     return LinesAllResponse(
         date=format_date(schedule_date),
         lines=lines_out
+    )
+
+
+def transform_line_schedule(
+    raw_data: Dict[str, Any],
+    schedule_date: str,
+    line_code: str,
+    direction: str
+) -> LineScheduleResponse:
+    """Transform Schedule/Line response into a compact, typed schedule payload."""
+    lines = as_list(raw_data.get("Lines", {}).get("Line"))
+    selected_line = next((line for line in lines if isinstance(line, dict)), {})
+
+    trips_out = []
+    for trip in as_list(selected_line.get("Trip")):
+        if not isinstance(trip, dict):
+            continue
+
+        raw_stops = as_list(trip.get("Stops"))
+
+        stops_out = []
+        for stop in raw_stops:
+            if not isinstance(stop, dict):
+                continue
+            stops_out.append(LineScheduleStop(
+                code=stop.get("Code", ""),
+                order=int(stop.get("Order", 0)),
+                time=trim_date_time(stop.get("Time", "")),
+                is_major=bool(stop.get("IsMajor", False)),
+            ))
+
+        stops_out.sort(key=lambda stop: stop.order)
+        trips_out.append(LineScheduleTrip(
+            number=trip.get("Number", ""),
+            display=trip.get("Display", ""),
+            stops=stops_out,
+        ))
+
+    return LineScheduleResponse(
+        date=format_date(schedule_date),
+        line_code=selected_line.get("Code", line_code),
+        direction=selected_line.get("Direction", direction),
+        vehicle_type=selected_line.get("Type", ""),
+        trips=trips_out,
     )
 
 
