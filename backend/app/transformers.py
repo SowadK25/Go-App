@@ -13,6 +13,9 @@ from app.models.schedules import (
     LineScheduleTrip,
     LineRouteStop,
     LineStopsResponse,
+    TripScheduleResponse,
+    TripDetails,
+    TripStopDetails,
 )
 from app.utils.utils import format_date, as_list, trim_date_time
 
@@ -332,6 +335,62 @@ def transform_line_stops(
         direction=line.get("Direction", direction),
         display=line.get("Display", ""),
         stops=stops,
+    )
+
+
+def transform_trip_schedule(
+    raw_data: Dict[str, Any],
+    schedule_date: str,
+    trip_number: str
+) -> TripScheduleResponse:
+    """Transform Schedule/Trip response into a typed trip payload."""
+    def _clean(value: Any) -> Optional[str]:
+        if value is None:
+            return None
+        text = str(value).strip()
+        return text if text else None
+
+    trips_out = []
+    for trip in as_list(raw_data.get("Trips")):
+        if not isinstance(trip, dict):
+            continue
+
+        stops_out = []
+        for stop in as_list(trip.get("Stops")):
+            if not isinstance(stop, dict):
+                continue
+
+            arrival = stop.get("ArrivalTime", {}) if isinstance(stop.get("ArrivalTime"), dict) else {}
+            departure = stop.get("DepartureTime", {}) if isinstance(stop.get("DepartureTime"), dict) else {}
+            track = stop.get("Track", {}) if isinstance(stop.get("Track"), dict) else {}
+
+            stops_out.append(TripStopDetails(
+                code=stop.get("Code", ""),
+                arrival_scheduled=_clean(arrival.get("Scheduled")),
+                arrival_computed=_clean(arrival.get("Computed")),
+                arrival_status=_clean(arrival.get("Status")),
+                departure_scheduled=_clean(departure.get("Scheduled")),
+                departure_computed=_clean(departure.get("Computed")),
+                departure_status=_clean(departure.get("Status")),
+                track_scheduled=_clean(track.get("Scheduled")),
+                track_actual=_clean(track.get("Actual")),
+                status=_clean(stop.get("Status")),
+                remark=_clean(stop.get("Remark")),
+            ))
+
+        trips_out.append(TripDetails(
+            trip_number=trip.get("Number", ""),
+            destination=trip.get("Destination", ""),
+            latitude=trip.get("Latitude"),
+            longitude=trip.get("Longitude"),
+            status=_clean(trip.get("Status")),
+            timestamp=_clean(trip.get("TimeStamp")),
+            stops=stops_out,
+        ))
+
+    return TripScheduleResponse(
+        date=format_date(schedule_date),
+        trips=trips_out,
     )
 
 

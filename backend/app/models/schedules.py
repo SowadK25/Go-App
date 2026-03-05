@@ -51,3 +51,35 @@ class LineStopsResponse(BaseModel):
     display: str
     stops: List[LineRouteStop] = Field(default_factory=list)
 
+
+class TripStopDetails(BaseModel):
+    """Stop details for /trips/{trip_number}"""
+    code: str
+    arrival_scheduled: Optional[str] = None
+    arrival_computed: Optional[str] = None
+    arrival_status: Optional[str] = None
+    departure_scheduled: Optional[str] = None
+    departure_computed: Optional[str] = None
+    departure_status: Optional[str] = None
+    track_scheduled: Optional[str] = None
+    track_actual: Optional[str] = None
+    status: Optional[str] = None
+    remark: Optional[str] = None
+
+
+class TripDetails(BaseModel):
+    """Trip details item from /trips/{trip_number}"""
+    trip_number: str
+    destination: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    status: Optional[str] = None
+    timestamp: Optional[str] = None
+    stops: List[TripStopDetails] = Field(default_factory=list)
+
+
+class TripScheduleResponse(BaseModel):
+    """Response payload for /trips/{trip_number}"""
+    date: str
+    trips: List[TripDetails] = Field(default_factory=list)
+
