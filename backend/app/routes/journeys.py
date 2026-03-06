@@ -1,8 +1,7 @@
 import httpx
 from fastapi import APIRouter, Query, HTTPException, Path
-from typing import Optional
 from app.clients.metrolinx import MetrolinxClient
-from app.models.journeys import JourneyResponse, FareResponse
+from app.models.journeys import JourneyResponse
 from app import transformers as transform
 from app.utils.utils import normalize_date, normalize_time
 
@@ -37,27 +36,3 @@ async def get_journeys(
     journey_date = normalize_date(journey_date)
     start_time = normalize_time(start_time)
     return await _fetch_journeys(from_stop, to_stop, journey_date, start_time, max_journeys)
-
-@router.get("/fares", response_model=FareResponse)
-async def get_fares(
-    from_stop: str = Query(..., description="Starting stop code"),
-    to_stop: str = Query(..., description="Destination stop code"),
-    operational_day: Optional[str] = Query(None, description="Operational day in YYYY-MM-DD format")
-):
-    """
-    Get fare information between two stops.
-    """
-    try:
-        if operational_day:
-            raw_data = await client.get_fares(from_stop, to_stop, operational_day)
-        else:
-            raw_data = await client.get_fares(from_stop, to_stop)
-        
-        return transform.transform_fares(raw_data, from_stop, to_stop, operational_day)
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == 404:
-            raise HTTPException(status_code=404, detail="No fare information found")
-        raise HTTPException(status_code=e.response.status_code, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching fares: {str(e)}")
-

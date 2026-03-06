@@ -36,17 +36,4 @@ class JourneyResponse(BaseModel):
     date: str
     start_time: str
     journeys: List[JourneyService]
-
-class Fare(BaseModel):
-    """Fare information"""
-    fare_type: str  # "Adult", "Student", "Senior", etc.
-    price: float
-    currency: str = "CAD"
-
-class FareResponse(BaseModel):
-    """Fare response"""
-    from_stop: str
-    to_stop: str
-    operational_day: Optional[str] = None
-    fares: List[Fare]
-
+    

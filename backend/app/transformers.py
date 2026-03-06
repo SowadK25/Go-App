@@ -3,8 +3,9 @@ Transform raw Metrolinx API responses into clean, frontend-friendly models
 """
 from typing import List, Dict, Any, Optional
 from app.models.stops import NextServiceLine, Stop, StopDetails, NextService
-from app.models.journeys import JourneyResponse, JourneyService, JourneyTrip, JourneyStop, Fare, FareResponse
+from app.models.journeys import JourneyResponse, JourneyService, JourneyTrip, JourneyStop
 from app.models.alerts import Alert, ServiceException, UnionDeparture
+from app.models.fares import FaresResponse, FareOption
 from app.models.schedules import (
     Variant,
     LineSummary,
@@ -393,27 +394,41 @@ def transform_trip_schedule(
         trips=trips_out,
     )
 
+def transform_fares(
+    raw_data: Dict[str, Any],
+    from_stop: str,
+    to_stop: str,
+    operational_day: Optional[str]
+) -> FaresResponse:
+    """Transform AllFares response into a flat frontend-friendly model."""
+    fare_options = []
 
-def transform_fares(raw_data: Dict[str, Any], from_stop: str, to_stop: str, operational_day: Optional[str]) -> FareResponse:
-    """Transform raw fare data into FareResponse model"""
-    fares = []
-    
-    fares_data = raw_data.get("Fares", {}).get("Fare", [])
-    if not isinstance(fares_data, list):
-        fares_data = [fares_data] if fares_data else []
-    
-    for fare_data in fares_data:
-        fares.append(Fare(
-            fare_type=fare_data.get("FareType", "Adult"),
-            price=float(fare_data.get("Price", 0)),
-            currency=fare_data.get("Currency", "CAD")
-        ))
-    
-    return FareResponse(
+    for category in as_list(raw_data.get("AllFares", {}).get("FareCategory")):
+        if not isinstance(category, dict):
+            continue
+
+        rider_type = category.get("Type", "")
+        for ticket in as_list(category.get("Tickets")):
+            if not isinstance(ticket, dict):
+                continue
+
+            payment_type = ticket.get("Type", "")
+            for fare in as_list(ticket.get("Fares")):
+                if not isinstance(fare, dict):
+                    continue
+                fare_options.append(FareOption(
+                    rider_type=rider_type,
+                    payment_type=payment_type,
+                    fare_type=fare.get("Type", ""),
+                    amount=float(fare.get("Amount", 0)),
+                    category=fare.get("Category"),
+                ))
+
+    return FaresResponse(
         from_stop=from_stop,
         to_stop=to_stop,
         operational_day=operational_day,
-        fares=fares
+        fares=fare_options,
     )
 
 
