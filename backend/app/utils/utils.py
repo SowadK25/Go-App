@@ -45,3 +45,28 @@ def trim_date_time(value: Any) -> str:
     if len(parts) >= 2:
         return f"{parts[0]}:{parts[1]}"
     return text
+
+def clean_str(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text if text else None
+
+
+def to_int_safe(value: Any) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def delay_status_from_seconds(delay_seconds: int | None) -> str | None:
+    if delay_seconds is None:
+        return None
+    if delay_seconds > 60:
+        return "delayed"
+    if delay_seconds < -60:
+        return "early"
+    return "on_time"

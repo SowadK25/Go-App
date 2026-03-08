@@ -1,6 +1,7 @@
 from .stops import Stop, StopDetails, NextService
 from .journeys import JourneyResponse, JourneyService, JourneyTrip, JourneyStop
 from .fares import FaresResponse, FareOption
+from .service import ServiceAtGlanceResponse, ServiceTrip
 from .alerts import Alert, ServiceException, UnionDeparture
 from .schedules import (
     Variant,
@@ -25,6 +26,8 @@ __all__ = [
     "JourneyStop",
     "FaresResponse",
     "FareOption",
+    "ServiceAtGlanceResponse",
+    "ServiceTrip",
     "Alert",
     "ServiceException",
     "UnionDeparture",

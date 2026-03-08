@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routes import stops, journeys, alerts, schedules, fares
+from app.routes import stops, journeys, alerts, schedules, fares, service
 
 app = FastAPI(
     title="GO Transit Unofficial API",
@@ -13,6 +13,7 @@ app.include_router(journeys.router)
 app.include_router(alerts.router)
 app.include_router(schedules.router)
 app.include_router(fares.router)
+app.include_router(service.router)
 
 @app.get("/health")
 def health():

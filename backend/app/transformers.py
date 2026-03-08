@@ -6,6 +6,7 @@ from app.models.stops import NextServiceLine, Stop, StopDetails, NextService
 from app.models.journeys import JourneyResponse, JourneyService, JourneyTrip, JourneyStop
 from app.models.alerts import Alert, ServiceException, UnionDeparture
 from app.models.fares import FaresResponse, FareOption
+from app.models.service import ServiceAtGlanceResponse, ServiceTrip
 from app.models.schedules import (
     Variant,
     LineSummary,
@@ -18,7 +19,14 @@ from app.models.schedules import (
     TripDetails,
     TripStopDetails,
 )
-from app.utils.utils import format_date, as_list, trim_date_time
+from app.utils.utils import (
+    format_date,
+    as_list,
+    trim_date_time,
+    clean_str,
+    to_int_safe,
+    delay_status_from_seconds,
+)
 
 
 def transform_stops(raw_data: Dict[str, Any]) -> List[Stop]:
@@ -345,12 +353,6 @@ def transform_trip_schedule(
     trip_number: str
 ) -> TripScheduleResponse:
     """Transform Schedule/Trip response into a typed trip payload."""
-    def _clean(value: Any) -> Optional[str]:
-        if value is None:
-            return None
-        text = str(value).strip()
-        return text if text else None
-
     trips_out = []
     for trip in as_list(raw_data.get("Trips")):
         if not isinstance(trip, dict):
@@ -367,16 +369,16 @@ def transform_trip_schedule(
 
             stops_out.append(TripStopDetails(
                 code=stop.get("Code", ""),
-                arrival_scheduled=_clean(arrival.get("Scheduled")),
-                arrival_computed=_clean(arrival.get("Computed")),
-                arrival_status=_clean(arrival.get("Status")),
-                departure_scheduled=_clean(departure.get("Scheduled")),
-                departure_computed=_clean(departure.get("Computed")),
-                departure_status=_clean(departure.get("Status")),
-                track_scheduled=_clean(track.get("Scheduled")),
-                track_actual=_clean(track.get("Actual")),
-                status=_clean(stop.get("Status")),
-                remark=_clean(stop.get("Remark")),
+                arrival_scheduled=clean_str(arrival.get("Scheduled")),
+                arrival_computed=clean_str(arrival.get("Computed")),
+                arrival_status=clean_str(arrival.get("Status")),
+                departure_scheduled=clean_str(departure.get("Scheduled")),
+                departure_computed=clean_str(departure.get("Computed")),
+                departure_status=clean_str(departure.get("Status")),
+                track_scheduled=clean_str(track.get("Scheduled")),
+                track_actual=clean_str(track.get("Actual")),
+                status=clean_str(stop.get("Status")),
+                remark=clean_str(stop.get("Remark")),
             ))
 
         trips_out.append(TripDetails(
@@ -384,8 +386,8 @@ def transform_trip_schedule(
             destination=trip.get("Destination", ""),
             latitude=trip.get("Latitude"),
             longitude=trip.get("Longitude"),
-            status=_clean(trip.get("Status")),
-            timestamp=_clean(trip.get("TimeStamp")),
+            status=clean_str(trip.get("Status")),
+            timestamp=clean_str(trip.get("TimeStamp")),
             stops=stops_out,
         ))
 
@@ -429,6 +431,71 @@ def transform_fares(
         to_stop=to_stop,
         operational_day=operational_day,
         fares=fare_options,
+    )
+
+
+def transform_service_at_a_glance(raw_data: Dict[str, Any], mode: str) -> ServiceAtGlanceResponse:
+    """Transform ServiceataGlance payload into app-ready trip/status data."""
+    raw_trips = as_list(raw_data.get("Trips", {}).get("Trip"))
+    trips: List[ServiceTrip] = []
+
+    in_motion_count = 0
+    early_count = 0
+    on_time_count = 0
+    delayed_count = 0
+
+    for raw_trip in raw_trips:
+        if not isinstance(raw_trip, dict):
+            continue
+
+        delay_seconds = to_int_safe(raw_trip.get("DelaySeconds"))
+        delay_minutes = round(delay_seconds / 60) if delay_seconds is not None else None
+        delay_status = delay_status_from_seconds(delay_seconds)
+
+        is_in_motion = bool(raw_trip.get("IsInMotion", False))
+        at_station_code = clean_str(raw_trip.get("AtStationCode"))
+
+        if is_in_motion:
+            in_motion_count += 1
+        if delay_status == "early":
+            early_count += 1
+        if delay_status == "on_time":
+            on_time_count += 1
+        if delay_status == "delayed":
+            delayed_count += 1
+
+        trips.append(ServiceTrip(
+            trip_number=str(raw_trip.get("TripNumber", "")),
+            line_code=str(raw_trip.get("LineCode", "")),
+            route_number=clean_str(raw_trip.get("RouteNumber")),
+            direction=clean_str(raw_trip.get("VariantDir")),
+            display=str(raw_trip.get("Display", "")),
+            start_time=clean_str(raw_trip.get("StartTime")),
+            end_time=clean_str(raw_trip.get("EndTime")),
+            cars=to_int_safe(raw_trip.get("Cars")),
+            latitude=raw_trip.get("Latitude"),
+            longitude=raw_trip.get("Longitude"),
+            is_in_motion=is_in_motion,
+            delay_seconds=delay_seconds,
+            delay_minutes=delay_minutes,
+            delay_status=delay_status,
+            course=to_int_safe(raw_trip.get("Course")),
+            first_stop_code=clean_str(raw_trip.get("FirstStopCode")),
+            last_stop_code=clean_str(raw_trip.get("LastStopCode")),
+            prev_stop_code=clean_str(raw_trip.get("PrevStopCode")),
+            next_stop_code=clean_str(raw_trip.get("NextStopCode")),
+            at_station_code=at_station_code,
+            modified_at=clean_str(raw_trip.get("ModifiedDate")),
+        ))
+
+    return ServiceAtGlanceResponse(
+        mode=mode,
+        total_trips=len(trips),
+        in_motion_trips=in_motion_count,
+        early_trips=early_count,
+        on_time_trips=on_time_count,
+        delayed_trips=delayed_count,
+        trips=trips,
     )
 
 
