@@ -7,6 +7,9 @@ from .service import (
     UnionDeparture,
     UnionDepartureStop,
     UnionDeparturesResponse,
+    ServiceExceptionStop,
+    ServiceExceptionTrip,
+    ServiceExceptionsResponse,
 )
 from .alerts import Alert, ServiceException
 from .schedules import (
@@ -37,6 +40,9 @@ __all__ = [
     "UnionDeparture",
     "UnionDepartureStop",
     "UnionDeparturesResponse",
+    "ServiceExceptionStop",
+    "ServiceExceptionTrip",
+    "ServiceExceptionsResponse",
     "Alert",
     "ServiceException",
     "Variant",

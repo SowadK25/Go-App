@@ -12,6 +12,9 @@ from app.models.service import (
     UnionDeparture,
     UnionDepartureStop,
     UnionDeparturesResponse,
+    ServiceExceptionStop,
+    ServiceExceptionTrip,
+    ServiceExceptionsResponse,
 )
 from app.models.schedules import (
     Variant,
@@ -629,5 +632,75 @@ def transform_union_departures(raw_data: Dict[str, Any]) -> UnionDeparturesRespo
         generated_at=clean_str(raw_data.get("Metadata", {}).get("TimeStamp")),
         total_departures=len(departures),
         departures=departures,
+    )
+
+
+def transform_service_exceptions(raw_data: Dict[str, Any], mode: str) -> ServiceExceptionsResponse:
+    """Transform ServiceUpdate/Exceptions payload into an app-friendly response."""
+    trips_out: List[ServiceExceptionTrip] = []
+    raw_trips = as_list(raw_data.get("Trip"))
+
+    cancelled_count = 0
+    override_count = 0
+    stop_change_count = 0
+
+    for raw_trip in raw_trips:
+        if not isinstance(raw_trip, dict):
+            continue
+
+        is_cancelled = str(raw_trip.get("IsCancelled", "0")) == "1"
+        is_override = str(raw_trip.get("IsOverride", "0")) == "1"
+
+        stops_out: List[ServiceExceptionStop] = []
+        for raw_stop in as_list(raw_trip.get("Stop")):
+            if not isinstance(raw_stop, dict):
+                continue
+            stops_out.append(ServiceExceptionStop(
+                order=to_int_safe(raw_stop.get("Order")),
+                code=clean_str(raw_stop.get("Code")),
+                name=clean_str(raw_stop.get("Name")),
+                service_type=clean_str(raw_stop.get("ServiceType")),
+                is_stopping=str(raw_stop.get("IsStopping", "1")) == "1",
+                is_cancelled=str(raw_stop.get("IsCancelled", "0")) == "1",
+                is_override=str(raw_stop.get("IsOverride", "0")) == "1",
+                scheduled_arrival=clean_str(raw_stop.get("SchArrival")),
+                scheduled_departure=clean_str(raw_stop.get("SchDeparture")),
+                actual_time=clean_str(raw_stop.get("ActualTime")),
+            ))
+
+        has_stop_change = any(
+            (not stop.is_stopping) or stop.is_cancelled or stop.is_override
+            for stop in stops_out
+        )
+
+        if is_cancelled:
+            exception_type = "cancelled"
+            cancelled_count += 1
+        elif is_override:
+            exception_type = "override"
+            override_count += 1
+        elif has_stop_change:
+            exception_type = "stop_change"
+            stop_change_count += 1
+        else:
+            continue
+
+        trips_out.append(ServiceExceptionTrip(
+            trip_number=str(raw_trip.get("TripNumber", "")),
+            trip_name=clean_str(raw_trip.get("TripName")),
+            is_cancelled=is_cancelled,
+            is_override=is_override,
+            exception_type=exception_type,
+            affected_stops=stops_out,
+        ))
+
+    return ServiceExceptionsResponse(
+        mode=mode,
+        generated_at=clean_str(raw_data.get("Metadata", {}).get("TimeStamp")),
+        total_trips=len(trips_out),
+        cancelled_trips=cancelled_count,
+        override_trips=override_count,
+        stop_change_trips=stop_change_count,
+        trips=trips_out,
     )
 

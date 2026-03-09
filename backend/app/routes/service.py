@@ -2,12 +2,29 @@ import httpx
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 from app.clients.metrolinx import MetrolinxClient
-from app.models.service import ServiceAtGlanceResponse, ServiceTrip, UnionDeparturesResponse
+from app.models.service import (
+    ServiceAtGlanceResponse,
+    ServiceTrip,
+    UnionDeparturesResponse,
+    ServiceExceptionsResponse,
+    ServiceExceptionTrip,
+)
 from app import transformers as transform
 from app.utils.utils import normalize_text
 
 router = APIRouter(prefix="/api/service", tags=["service"])
 client = MetrolinxClient()
+
+
+def _ensure_trip_found(trip_number: Optional[str], total: int) -> None:
+    if trip_number and total == 0:
+        raise HTTPException(status_code=404, detail=f"Trip {trip_number} not found")
+
+
+def _ensure_stop_found(stop_code: Optional[str], total: int) -> None:
+    if stop_code and total == 0:
+        raise HTTPException(status_code=404, detail=f"Stop {stop_code} not found")
+
 
 def _filter_service_trips(
     response: ServiceAtGlanceResponse,
@@ -48,6 +65,43 @@ def _filter_service_trips(
     )
 
 
+def _filter_exception_trips(
+    response: ServiceExceptionsResponse,
+    exception_type: Optional[str],
+    trip_number: Optional[str],
+    stop_code: Optional[str],
+    limit: Optional[int],
+) -> ServiceExceptionsResponse:
+    exception_type_n = normalize_text(exception_type) if exception_type else None
+    trip_number_u = trip_number.strip().upper() if trip_number else None
+    stop_code_u = stop_code.strip().upper() if stop_code else None
+
+    filtered: list[ServiceExceptionTrip] = []
+    for trip in response.trips:
+        if exception_type_n and normalize_text(trip.exception_type) != exception_type_n:
+            continue
+        if trip_number_u and (trip.trip_number or "").upper() != trip_number_u:
+            continue
+        if stop_code_u:
+            stop_codes = [(stop.code or "").upper() for stop in trip.affected_stops]
+            if stop_code_u not in stop_codes:
+                continue
+        filtered.append(trip)
+
+    if limit is not None:
+        filtered = filtered[:limit]
+
+    return ServiceExceptionsResponse(
+        mode=response.mode,
+        generated_at=response.generated_at,
+        total_trips=len(filtered),
+        cancelled_trips=sum(1 for trip in filtered if trip.exception_type == "cancelled"),
+        override_trips=sum(1 for trip in filtered if trip.exception_type == "override"),
+        stop_change_trips=sum(1 for trip in filtered if trip.exception_type == "stop_change"),
+        trips=filtered,
+    )
+
+
 @router.get("/trains", response_model=ServiceAtGlanceResponse, response_model_exclude_none=True)
 async def get_service_trains(
     line_code: Optional[str] = Query(None),
@@ -60,7 +114,7 @@ async def get_service_trains(
     try:
         raw = await client.get_service_trains()
         response = transform.transform_service_at_a_glance(raw, mode="train")
-        return _filter_service_trips(
+        filtered = _filter_service_trips(
             response=response,
             line_code=line_code,
             direction=direction,
@@ -68,6 +122,8 @@ async def get_service_trains(
             delay_status=delay_status,
             limit=limit,
         )
+        _ensure_trip_found(trip_number, filtered.total_trips)
+        return filtered
     except httpx.HTTPStatusError as e:
         raise HTTPException(status_code=e.response.status_code, detail=str(e))
     except Exception as e:
@@ -86,7 +142,7 @@ async def get_service_buses(
     try:
         raw = await client.get_service_buses()
         response = transform.transform_service_at_a_glance(raw, mode="bus")
-        return _filter_service_trips(
+        filtered = _filter_service_trips(
             response=response,
             line_code=line_code,
             direction=direction,
@@ -94,6 +150,8 @@ async def get_service_buses(
             delay_status=delay_status,
             limit=limit,
         )
+        _ensure_trip_found(trip_number, filtered.total_trips)
+        return filtered
     except httpx.HTTPStatusError as e:
         raise HTTPException(status_code=e.response.status_code, detail=str(e))
     except Exception as e:
@@ -151,3 +209,66 @@ async def get_union_departures(
         raise HTTPException(status_code=e.response.status_code, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching Union departures: {str(e)}")
+
+
+@router.get("/exceptions/train", response_model=ServiceExceptionsResponse)
+async def get_service_exceptions_train(
+    exception_type: Optional[str] = Query(None, description="cancelled, override, stop_change"),
+    trip_number: Optional[str] = Query(None),
+    stop_code: Optional[str] = Query(None),
+    limit: Optional[int] = Query(None, ge=1, le=500),
+):
+    """Get current train service exceptions."""
+    try:
+        raw = await client.get_exceptions_train()
+        response = transform.transform_service_exceptions(raw, mode="train")
+        filtered = _filter_exception_trips(response, exception_type, trip_number, stop_code, limit)
+        _ensure_trip_found(trip_number, filtered.total_trips)
+        _ensure_stop_found(stop_code, filtered.total_trips)
+        return filtered
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching train exceptions: {str(e)}")
+
+
+@router.get("/exceptions/bus", response_model=ServiceExceptionsResponse)
+async def get_service_exceptions_bus(
+    exception_type: Optional[str] = Query(None, description="cancelled, override, stop_change"),
+    trip_number: Optional[str] = Query(None),
+    stop_code: Optional[str] = Query(None),
+    limit: Optional[int] = Query(None, ge=1, le=500),
+):
+    """Get current bus service exceptions."""
+    try:
+        raw = await client.get_exceptions_bus()
+        response = transform.transform_service_exceptions(raw, mode="bus")
+        filtered = _filter_exception_trips(response, exception_type, trip_number, stop_code, limit)
+        _ensure_trip_found(trip_number, filtered.total_trips)
+        _ensure_stop_found(stop_code, filtered.total_trips)
+        return filtered
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching bus exceptions: {str(e)}")
+
+
+@router.get("/exceptions/all", response_model=ServiceExceptionsResponse)
+async def get_service_exceptions_all(
+    exception_type: Optional[str] = Query(None, description="cancelled, override, stop_change"),
+    trip_number: Optional[str] = Query(None),
+    stop_code: Optional[str] = Query(None),
+    limit: Optional[int] = Query(None, ge=1, le=500),
+):
+    """Get all current service exceptions."""
+    try:
+        raw = await client.get_exceptions_all()
+        response = transform.transform_service_exceptions(raw, mode="all")
+        filtered = _filter_exception_trips(response, exception_type, trip_number, stop_code, limit)
+        _ensure_trip_found(trip_number, filtered.total_trips)
+        _ensure_stop_found(stop_code, filtered.total_trips)
+        return filtered
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching all exceptions: {str(e)}")

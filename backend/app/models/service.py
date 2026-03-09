@@ -63,3 +63,38 @@ class UnionDeparturesResponse(BaseModel):
     generated_at: Optional[str] = None
     total_departures: int = 0
     departures: List[UnionDeparture] = Field(default_factory=list)
+
+
+class ServiceExceptionStop(BaseModel):
+    """Stop-level exception details for a trip."""
+    order: Optional[int] = None
+    code: Optional[str] = None
+    name: Optional[str] = None
+    service_type: Optional[str] = None
+    is_stopping: bool = True
+    is_cancelled: bool = False
+    is_override: bool = False
+    scheduled_arrival: Optional[str] = None
+    scheduled_departure: Optional[str] = None
+    actual_time: Optional[str] = None
+
+
+class ServiceExceptionTrip(BaseModel):
+    """Trip-level exception summary."""
+    trip_number: str
+    trip_name: Optional[str] = None
+    is_cancelled: bool = False
+    is_override: bool = False
+    exception_type: str  # cancelled | override | stop_change
+    affected_stops: List[ServiceExceptionStop] = Field(default_factory=list)
+
+
+class ServiceExceptionsResponse(BaseModel):
+    """Frontend-friendly service exceptions response."""
+    mode: str  # train | bus | all
+    generated_at: Optional[str] = None
+    total_trips: int = 0
+    cancelled_trips: int = 0
+    override_trips: int = 0
+    stop_change_trips: int = 0
+    trips: List[ServiceExceptionTrip] = Field(default_factory=list)
