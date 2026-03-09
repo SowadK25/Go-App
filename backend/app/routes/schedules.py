@@ -99,4 +99,3 @@ async def get_trip_schedule(
         raise HTTPException(status_code=e.response.status_code, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching trip schedule: {str(e)}")
-

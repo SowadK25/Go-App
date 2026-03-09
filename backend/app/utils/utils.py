@@ -53,6 +53,13 @@ def clean_str(value: Any) -> str | None:
     return text if text else None
 
 
+def normalize_text(value: Any) -> str:
+    cleaned = clean_str(value)
+    if cleaned is None:
+        return ""
+    return " ".join(cleaned.lower().split())
+
+
 def to_int_safe(value: Any) -> int | None:
     if value is None:
         return None

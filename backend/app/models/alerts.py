@@ -1,20 +1,20 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List
-from datetime import datetime
 
 class Alert(BaseModel):
-    """Service or information alert"""
-    id: Optional[str] = None
+    """Service or information alert message."""
+    code: str
+    parent_code: Optional[str] = None
+    status: str  # INIT, UPD
+    posted_at: Optional[str] = None
+    alert_type: str  # Service, Information
     title: str
-    description: str
-    alert_type: str  # "Service", "Information"
-    severity: Optional[str] = None  # "High", "Medium", "Low"
+    body: str
+    category: Optional[str] = None
+    sub_category: Optional[str] = None
     affected_lines: List[str] = Field(default_factory=list)
     affected_stops: List[str] = Field(default_factory=list)
-    start_time: Optional[str] = None
-    end_time: Optional[str] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    affected_trips: List[str] = Field(default_factory=list)
 
 class ServiceException(BaseModel):
     """Schedule exception (cancellation, delay, etc.)"""
@@ -27,17 +27,3 @@ class ServiceException(BaseModel):
     scheduled_date: str
     scheduled_time: Optional[str] = None
     reason: Optional[str] = None
-
-class UnionDeparture(BaseModel):
-    """Departure from Union Station"""
-    trip_number: str
-    line_code: str
-    line_name: str
-    direction: str
-    destination: str
-    scheduled_departure: str
-    predicted_departure: Optional[str] = None
-    platform: Optional[str] = None
-    vehicle_type: str  # "Train", "Bus", "UPX"
-    status: Optional[str] = None  # "On Time", "Delayed", "Cancelled"
-

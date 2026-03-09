@@ -4,9 +4,15 @@ Transform raw Metrolinx API responses into clean, frontend-friendly models
 from typing import List, Dict, Any, Optional
 from app.models.stops import NextServiceLine, Stop, StopDetails, NextService
 from app.models.journeys import JourneyResponse, JourneyService, JourneyTrip, JourneyStop
-from app.models.alerts import Alert, ServiceException, UnionDeparture
+from app.models.alerts import Alert, ServiceException
 from app.models.fares import FaresResponse, FareOption
-from app.models.service import ServiceAtGlanceResponse, ServiceTrip
+from app.models.service import (
+    ServiceAtGlanceResponse,
+    ServiceTrip,
+    UnionDeparture,
+    UnionDepartureStop,
+    UnionDeparturesResponse,
+)
 from app.models.schedules import (
     Variant,
     LineSummary,
@@ -500,36 +506,48 @@ def transform_service_at_a_glance(raw_data: Dict[str, Any], mode: str) -> Servic
 
 
 def transform_alerts(raw_data: Dict[str, Any], alert_type: str = "Service") -> List[Alert]:
-    """Transform raw alert data into Alert models"""
+    """Transform raw ServiceUpdate messages into Alert models."""
     alerts = []
-    
-    alerts_data = raw_data.get("Alerts", {}).get("Alert", [])
-    if not isinstance(alerts_data, list):
-        alerts_data = [alerts_data] if alerts_data else []
-    
-    for alert_data in alerts_data:
-        affected_lines = alert_data.get("AffectedLines", {}).get("Line", [])
-        if not isinstance(affected_lines, list):
-            affected_lines = [affected_lines] if affected_lines else []
-        
-        affected_stops = alert_data.get("AffectedStops", {}).get("Stop", [])
-        if not isinstance(affected_stops, list):
-            affected_stops = [affected_stops] if affected_stops else []
-        
+
+    messages = as_list(raw_data.get("Messages", {}).get("Message"))
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+
+        lines = [
+            clean_str(line.get("Code"))
+            for line in as_list(message.get("Lines"))
+            if isinstance(line, dict)
+        ]
+        stops = [
+            clean_str(stop.get("Code"))
+            for stop in as_list(message.get("Stops"))
+            if isinstance(stop, dict)
+        ]
+        trips = [
+            clean_str(trip.get("TripNumber"))
+            for trip in as_list(message.get("Trips"))
+            if isinstance(trip, dict)
+        ]
+
+        title_en = clean_str(message.get("SubjectEnglish")) or ""
+        body_en = clean_str(message.get("BodyEnglish")) or ""
+
         alerts.append(Alert(
-            id=alert_data.get("AlertId"),
-            title=alert_data.get("Title", ""),
-            description=alert_data.get("Description", ""),
+            code=str(message.get("Code", "")),
+            parent_code=clean_str(message.get("ParentCode")),
+            status=clean_str(message.get("Status")) or "",
+            posted_at=clean_str(message.get("PostedDateTime")),
             alert_type=alert_type,
-            severity=alert_data.get("Severity"),
-            affected_lines=[line.get("LineCode", "") if isinstance(line, dict) else str(line) for line in affected_lines],
-            affected_stops=[stop.get("StopCode", "") if isinstance(stop, dict) else str(stop) for stop in affected_stops],
-            start_time=alert_data.get("StartTime"),
-            end_time=alert_data.get("EndTime"),
-            created_at=alert_data.get("CreatedAt"),
-            updated_at=alert_data.get("UpdatedAt")
+            title=title_en,
+            body=body_en,
+            category=clean_str(message.get("Category")),
+            sub_category=clean_str(message.get("SubCategory")),
+            affected_lines=[line for line in lines if line],
+            affected_stops=[stop for stop in stops if stop],
+            affected_trips=[trip for trip in trips if trip],
         ))
-    
+
     return alerts
 
 
@@ -561,27 +579,55 @@ def transform_exceptions(raw_data: Dict[str, Any]) -> List[ServiceException]:
     return exceptions
 
 
-def transform_union_departures(raw_data: Dict[str, Any]) -> List[UnionDeparture]:
-    """Transform raw Union departures data into UnionDeparture models"""
-    departures = []
-    
-    departures_data = raw_data.get("Departures", {}).get("Departure", [])
-    if not isinstance(departures_data, list):
-        departures_data = [departures_data] if departures_data else []
-    
-    for dep_data in departures_data:
+def transform_union_departures(raw_data: Dict[str, Any]) -> UnionDeparturesResponse:
+    """Transform UnionDepartures/All payload into an app-ready departures board."""
+    departures: List[UnionDeparture] = []
+    raw_departures = as_list(raw_data.get("AllDepartures", {}).get("Trip"))
+
+    for raw_departure in raw_departures:
+        if not isinstance(raw_departure, dict):
+            continue
+
+        info = clean_str(raw_departure.get("Info")) or ""
+        info_lower = info.lower()
+        boarding_status = "proceed" if "proceed" in info_lower else "wait"
+
+        raw_platform = clean_str(raw_departure.get("Platform"))
+        platform = None if raw_platform in (None, "-", "--") else raw_platform
+
+        stops = []
+        for raw_stop in as_list(raw_departure.get("Stops")):
+            if not isinstance(raw_stop, dict):
+                continue
+            stop_name = clean_str(raw_stop.get("Name"))
+            if not stop_name:
+                continue
+            stops.append(UnionDepartureStop(
+                name=stop_name,
+                code=clean_str(raw_stop.get("Code")),
+            ))
+
+        destination = stops[-1].name if stops else None
+        departure_datetime = clean_str(raw_departure.get("Time")) or ""
+
         departures.append(UnionDeparture(
-            trip_number=dep_data.get("TripNumber", ""),
-            line_code=dep_data.get("LineCode", ""),
-            line_name=dep_data.get("LineName", ""),
-            direction=dep_data.get("Direction", ""),
-            destination=dep_data.get("Destination", ""),
-            scheduled_departure=dep_data.get("ScheduledDeparture", ""),
-            predicted_departure=dep_data.get("PredictedDeparture"),
-            platform=dep_data.get("Platform"),
-            vehicle_type=dep_data.get("VehicleType", "Train"),
-            status=dep_data.get("Status")
+            trip_number=str(raw_departure.get("TripNumber", "")),
+            service=clean_str(raw_departure.get("Service")) or "",
+            service_type=clean_str(raw_departure.get("ServiceType")) or "",
+            info=info,
+            boarding_status=boarding_status,
+            departure_datetime=departure_datetime,
+            departure_time=trim_date_time(departure_datetime),
+            platform=platform,
+            destination=destination,
+            stops=stops,
         ))
-    
-    return departures
+
+    departures.sort(key=lambda dep: dep.departure_datetime)
+
+    return UnionDeparturesResponse(
+        generated_at=clean_str(raw_data.get("Metadata", {}).get("TimeStamp")),
+        total_departures=len(departures),
+        departures=departures,
+    )
 

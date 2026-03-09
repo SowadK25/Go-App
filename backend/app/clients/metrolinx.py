@@ -109,10 +109,6 @@ class MetrolinxClient:
         """Returns all in-service train trips"""
         return await self._get("ServiceataGlance/Trains/All")
     
-    async def get_service_upx(self):
-        """Returns all in-service UPX trips"""
-        return await self._get("ServiceataGlance/UPX/All")
-    
     # ========== GTFS Real-time Methods ==========
     
     async def get_gtfs_alerts(self):

@@ -36,3 +36,30 @@ class ServiceAtGlanceResponse(BaseModel):
     on_time_trips: int = 0
     delayed_trips: int = 0
     trips: List[ServiceTrip] = Field(default_factory=list)
+
+
+class UnionDeparture(BaseModel):
+    """Departure from Union Station."""
+    trip_number: str
+    service: str
+    service_type: str
+    info: str
+    boarding_status: str  # proceed | wait
+    departure_datetime: str
+    departure_time: str
+    platform: Optional[str] = None
+    destination: Optional[str] = None
+    stops: List["UnionDepartureStop"] = Field(default_factory=list)
+
+
+class UnionDepartureStop(BaseModel):
+    """Stop on the Union departure trip pattern."""
+    name: str
+    code: Optional[str] = None
+
+
+class UnionDeparturesResponse(BaseModel):
+    """Frontend-friendly Union departures board payload."""
+    generated_at: Optional[str] = None
+    total_departures: int = 0
+    departures: List[UnionDeparture] = Field(default_factory=list)
