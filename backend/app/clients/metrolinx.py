@@ -1,24 +1,82 @@
 import httpx
+import logging
 from datetime import date
 from typing import Optional
 from app.config import METROLINX_API_KEY
+from app.utils.cache import get_cache_backend
 
 BASE_URL = "https://api.openmetrolinx.com/OpenDataAPI/api/V1"
+logger = logging.getLogger(__name__)
+
+_CACHE = get_cache_backend()
 
 class MetrolinxClient:
     def __init__(self):
         self.timeout = 10
+        self._cache = _CACHE
+
+    def _cache_ttl(self, endpoint: str) -> Optional[int]:
+        cache_rules = [
+            ("Stop/All", 86400),
+            ("Stop/Details/", 86400),
+            ("Stop/NextService/", 15),
+            ("Schedule/Line/All/", 86400),
+            ("Schedule/Line/Stop/", 86400),
+            ("Schedule/Line/", 86400),
+            ("Schedule/Trip/", 3600),
+            ("Schedule/Journey/", 30),
+            ("Fares/", 86400),
+            ("ServiceUpdate/ServiceAlert/All", 60),
+            ("ServiceUpdate/InformationAlert/All", 60),
+            ("ServiceUpdate/UnionDepartures/All", 15),
+            ("ServiceUpdate/Exceptions/Train", 60),
+            ("ServiceUpdate/Exceptions/Bus", 60),
+            ("ServiceUpdate/Exceptions/All", 60),
+            ("ServiceataGlance/Buses/All", 15),
+            ("ServiceataGlance/Trains/All", 15),
+        ]
+
+        for prefix, ttl in cache_rules:
+            if endpoint.startswith(prefix):
+                return ttl
+        return None
+
+    def _cache_key(self, endpoint: str, params: Optional[dict]) -> str:
+        if not params:
+            return endpoint
+        sanitized = {k: v for k, v in params.items() if k != "key"}
+        if not sanitized:
+            return endpoint
+        parts = [f"{k}={sanitized[k]}" for k in sorted(sanitized.keys())]
+        return f"{endpoint}?{'&'.join(parts)}"
     
     async def _get(self, endpoint: str, params: Optional[dict] = None):
         """Helper method for GET requests"""
         if params is None:
             params = {}
         params["key"] = METROLINX_API_KEY
+
+        ttl = self._cache_ttl(endpoint)
+        cache_key = self._cache_key(endpoint, params)
+        if ttl:
+            try:
+                cached = await self._cache.get(cache_key)
+                if cached is not None:
+                    return cached
+            except Exception as exc:
+                logger.warning("Redis cache read failed for %s: %s", cache_key, exc)
         
         async with httpx.AsyncClient(timeout=self.timeout, verify=False) as client:
             response = await client.get(f"{BASE_URL}/{endpoint}", params=params)
             response.raise_for_status()
-            return response.json()
+            payload = response.json()
+
+        if ttl:
+            try:
+                await self._cache.set(cache_key, payload, ttl)
+            except Exception as exc:
+                logger.warning("Redis cache write failed for %s: %s", cache_key, exc)
+        return payload
     
     # ========== Stop Methods ==========
     
