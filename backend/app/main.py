@@ -2,7 +2,7 @@ import logging
 from fastapi import FastAPI, Request
 from starlette.responses import JSONResponse
 from app.routes import stops, journeys, alerts, schedules, fares, service
-from app.config import RATE_LIMIT_PER_MIN
+from app.config import CACHE_BACKEND, RATE_LIMIT_PER_MIN
 from app.utils.cache import get_cache_backend
 
 logger = logging.getLogger(__name__)
@@ -17,9 +17,12 @@ app.state.cache_backend = get_cache_backend()
 
 
 @app.on_event("startup")
-async def verify_redis_connection():
-    redis_ok = await app.state.cache_backend.ping()
-    if not redis_ok:
+async def verify_cache_connection():
+    if CACHE_BACKEND != "redis":
+        return
+
+    cache_ok = await app.state.cache_backend.ping()
+    if not cache_ok:
         raise RuntimeError("Redis ping failed")
 
 @app.middleware("http")
@@ -60,11 +63,12 @@ app.include_router(service.router)
 @app.get("/health")
 async def health():
     try:
-        redis_ok = await app.state.cache_backend.ping()
+        cache_ok = await app.state.cache_backend.ping()
     except Exception as exc:
-        logger.warning("Redis health check failed: %s", exc)
-        redis_ok = False
+        logger.warning("Cache health check failed: %s", exc)
+        cache_ok = False
     return {
-        "status": "ok" if redis_ok else "degraded",
-        "redis": "ok" if redis_ok else "down",
+        "status": "ok" if cache_ok else "degraded",
+        "cache_backend": app.state.cache_backend.backend_name,
+        "cache": "ok" if cache_ok else "down",
     }
