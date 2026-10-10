@@ -2,6 +2,7 @@ import httpx
 from fastapi import APIRouter, Path, Query, HTTPException
 from typing import List
 from app.clients.metrolinx import MetrolinxClient
+from app.utils.errors import upstream_error
 from app.models.stops import Stop, StopDetails, NextService
 from app import transformers as transform
 
@@ -15,9 +16,15 @@ async def get_all_stops():
         raw = await client.get_stops_all()
         return transform.transform_stops(raw)
     except httpx.HTTPStatusError as e:
-        raise HTTPException(status_code=e.response.status_code, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching stops: {str(e)}")
+        raise upstream_error(e) from None
+    except HTTPException:
+        raise
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Transit provider timed out. Please try again.") from None
+    except httpx.RequestError:
+        raise HTTPException(status_code=502, detail="Unable to connect to transit provider.") from None
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error fetching stops") from None
 
 @router.get("/{stop_code}/next-service", response_model=NextService)
 async def get_stop_next_service(stop_code: str = Path(..., description="Stop code")):
@@ -28,9 +35,15 @@ async def get_stop_next_service(stop_code: str = Path(..., description="Stop cod
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 404:
             raise HTTPException(status_code=404, detail=f"Stop {stop_code} not found")
-        raise HTTPException(status_code=e.response.status_code, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching next service: {str(e)}")
+        raise upstream_error(e) from None
+    except HTTPException:
+        raise
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Transit provider timed out. Please try again.") from None
+    except httpx.RequestError:
+        raise HTTPException(status_code=502, detail="Unable to connect to transit provider.") from None
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error fetching next service") from None
 
 @router.get("/{stop_code}/details", response_model=StopDetails)
 async def get_stop_details(stop_code: str = Path(..., description="Stop code")):
@@ -41,6 +54,12 @@ async def get_stop_details(stop_code: str = Path(..., description="Stop code")):
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 404:
             raise HTTPException(status_code=404, detail=f"Stop {stop_code} not found")
-        raise HTTPException(status_code=e.response.status_code, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching stop details: {str(e)}")
+        raise upstream_error(e) from None
+    except HTTPException:
+        raise
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Transit provider timed out. Please try again.") from None
+    except httpx.RequestError:
+        raise HTTPException(status_code=502, detail="Unable to connect to transit provider.") from None
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error fetching stop details") from None

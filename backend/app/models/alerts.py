@@ -16,6 +16,11 @@ class Alert(BaseModel):
     affected_stops: List[str] = Field(default_factory=list)
     affected_trips: List[str] = Field(default_factory=list)
 
+class AllAlertsResponse(BaseModel):
+    service_alerts: List[Alert]
+    information_alerts: List[Alert]
+
+
 class ServiceException(BaseModel):
     """Schedule exception (cancellation, delay, etc.)"""
     trip_number: str

@@ -1,6 +1,7 @@
 import httpx
 from fastapi import APIRouter, Query, HTTPException, Path
 from app.clients.metrolinx import MetrolinxClient
+from app.utils.errors import upstream_error
 from app.models.journeys import JourneyResponse
 from app import transformers as transform
 from app.utils.utils import normalize_date, normalize_time
@@ -21,9 +22,15 @@ async def _fetch_journeys(from_stop: str, to_stop: str, journey_date: str, start
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 404:
             raise HTTPException(status_code=404, detail="No journeys found for the given stops")
-        raise HTTPException(status_code=e.response.status_code, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching journeys: {str(e)}")
+        raise upstream_error(e) from None
+    except HTTPException:
+        raise
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Transit provider timed out. Please try again.") from None
+    except httpx.RequestError:
+        raise HTTPException(status_code=502, detail="Unable to connect to transit provider.") from None
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error fetching journeys") from None
 
 @router.get("/{from_stop}/{to_stop}/{journey_date}/{start_time}", response_model=JourneyResponse)
 async def get_journeys(

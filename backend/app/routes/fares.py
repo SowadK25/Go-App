@@ -2,6 +2,7 @@ import httpx
 from fastapi import APIRouter, Query, HTTPException
 from typing import Optional
 from app.clients.metrolinx import MetrolinxClient
+from app.utils.errors import upstream_error
 from app.models.fares import FaresResponse
 from app import transformers as transform
 from app.utils.utils import normalize_date
@@ -24,6 +25,12 @@ async def get_fares(
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 404:
             raise HTTPException(status_code=404, detail="No fare information found")
-        raise HTTPException(status_code=e.response.status_code, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching fares: {str(e)}")
+        raise upstream_error(e) from None
+    except HTTPException:
+        raise
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Transit provider timed out. Please try again.") from None
+    except httpx.RequestError:
+        raise HTTPException(status_code=502, detail="Unable to connect to transit provider.") from None
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error fetching fares") from None

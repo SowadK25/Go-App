@@ -4,6 +4,7 @@ from starlette.responses import JSONResponse
 from app.routes import stops, journeys, alerts, schedules, fares, service
 from app.config import CACHE_BACKEND, RATE_LIMIT_PER_MIN
 from app.utils.cache import get_cache_backend
+from app.models.health import HealthResponse
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ app.include_router(schedules.router)
 app.include_router(fares.router)
 app.include_router(service.router)
 
-@app.get("/health")
+@app.get("/health", response_model=HealthResponse)
 async def health():
     try:
         cache_ok = await app.state.cache_backend.ping()

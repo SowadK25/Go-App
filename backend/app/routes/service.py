@@ -2,6 +2,7 @@ import httpx
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 from app.clients.metrolinx import MetrolinxClient
+from app.utils.errors import upstream_error
 from app.models.service import (
     ServiceAtGlanceResponse,
     ServiceTrip,
@@ -125,9 +126,15 @@ async def get_service_trains(
         _ensure_trip_found(trip_number, filtered.total_trips)
         return filtered
     except httpx.HTTPStatusError as e:
-        raise HTTPException(status_code=e.response.status_code, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching train service status: {str(e)}")
+        raise upstream_error(e) from None
+    except HTTPException:
+        raise
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Transit provider timed out. Please try again.") from None
+    except httpx.RequestError:
+        raise HTTPException(status_code=502, detail="Unable to connect to transit provider.") from None
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error fetching train service status") from None
 
 
 @router.get("/buses", response_model=ServiceAtGlanceResponse, response_model_exclude_none=True)
@@ -153,9 +160,15 @@ async def get_service_buses(
         _ensure_trip_found(trip_number, filtered.total_trips)
         return filtered
     except httpx.HTTPStatusError as e:
-        raise HTTPException(status_code=e.response.status_code, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching bus service status: {str(e)}")
+        raise upstream_error(e) from None
+    except HTTPException:
+        raise
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Transit provider timed out. Please try again.") from None
+    except httpx.RequestError:
+        raise HTTPException(status_code=502, detail="Unable to connect to transit provider.") from None
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error fetching bus service status") from None
 
 @router.get("/union/departures", response_model=UnionDeparturesResponse)
 async def get_union_departures(
@@ -206,9 +219,15 @@ async def get_union_departures(
             departures=departures,
         )
     except httpx.HTTPStatusError as e:
-        raise HTTPException(status_code=e.response.status_code, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching Union departures: {str(e)}")
+        raise upstream_error(e) from None
+    except HTTPException:
+        raise
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Transit provider timed out. Please try again.") from None
+    except httpx.RequestError:
+        raise HTTPException(status_code=502, detail="Unable to connect to transit provider.") from None
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error fetching Union departures") from None
 
 
 @router.get("/exceptions/train", response_model=ServiceExceptionsResponse)
@@ -227,9 +246,15 @@ async def get_service_exceptions_train(
         _ensure_stop_found(stop_code, filtered.total_trips)
         return filtered
     except httpx.HTTPStatusError as e:
-        raise HTTPException(status_code=e.response.status_code, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching train exceptions: {str(e)}")
+        raise upstream_error(e) from None
+    except HTTPException:
+        raise
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Transit provider timed out. Please try again.") from None
+    except httpx.RequestError:
+        raise HTTPException(status_code=502, detail="Unable to connect to transit provider.") from None
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error fetching train exceptions") from None
 
 
 @router.get("/exceptions/bus", response_model=ServiceExceptionsResponse)
@@ -248,9 +273,15 @@ async def get_service_exceptions_bus(
         _ensure_stop_found(stop_code, filtered.total_trips)
         return filtered
     except httpx.HTTPStatusError as e:
-        raise HTTPException(status_code=e.response.status_code, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching bus exceptions: {str(e)}")
+        raise upstream_error(e) from None
+    except HTTPException:
+        raise
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Transit provider timed out. Please try again.") from None
+    except httpx.RequestError:
+        raise HTTPException(status_code=502, detail="Unable to connect to transit provider.") from None
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error fetching bus exceptions") from None
 
 
 @router.get("/exceptions/all", response_model=ServiceExceptionsResponse)
@@ -269,6 +300,12 @@ async def get_service_exceptions_all(
         _ensure_stop_found(stop_code, filtered.total_trips)
         return filtered
     except httpx.HTTPStatusError as e:
-        raise HTTPException(status_code=e.response.status_code, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching all exceptions: {str(e)}")
+        raise upstream_error(e) from None
+    except HTTPException:
+        raise
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Transit provider timed out. Please try again.") from None
+    except httpx.RequestError:
+        raise HTTPException(status_code=502, detail="Unable to connect to transit provider.") from None
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error fetching all exceptions") from None

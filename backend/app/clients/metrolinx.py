@@ -54,7 +54,7 @@ class MetrolinxClient:
         """Helper method for GET requests"""
         if params is None:
             params = {}
-        params["key"] = METROLINX_API_KEY
+        params = {**params, "key": METROLINX_API_KEY}
 
         ttl = self._cache_ttl(endpoint)
         cache_key = self._cache_key(endpoint, params)
@@ -66,7 +66,7 @@ class MetrolinxClient:
             except Exception as exc:
                 logger.warning("Redis cache read failed for %s: %s", cache_key, exc)
         
-        async with httpx.AsyncClient(timeout=self.timeout, verify=False) as client:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.get(f"{BASE_URL}/{endpoint}", params=params)
             response.raise_for_status()
             payload = response.json()

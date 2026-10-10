@@ -1,20 +1,33 @@
-from http.client import HTTPException
+from fastapi import HTTPException
+from datetime import datetime
+import re
+from zoneinfo import ZoneInfo
 from typing import Any, List
 
 DATE_MAX_CHARS = 8
 TIME_MAX_CHARS = 4
 
 def normalize_date(value: str) -> str:
-    normalized = "".join(ch for ch in value if ch.isdigit())
-    if len(normalized) != DATE_MAX_CHARS:
-        raise HTTPException(status_code=422, detail="journey_date must be in YYYYMMDD or YYYY-MM-DD format")
+    if not re.fullmatch(r"[0-9]{8}|[0-9]{4}-[0-9]{2}-[0-9]{2}", value):
+        raise HTTPException(status_code=422, detail="date must be in YYYYMMDD or YYYY-MM-DD format")
+    normalized = value.replace("-", "")
+    try:
+        datetime.strptime(normalized, "%Y%m%d")
+    except ValueError:
+        raise HTTPException(status_code=422, detail="date must be a valid calendar date") from None
     return normalized
 
 def normalize_time(value: str) -> str:
-    normalized = "".join(ch for ch in value if ch.isdigit())
-    if len(normalized) != TIME_MAX_CHARS:
+    if not re.fullmatch(r"[0-9]{4}|[0-9]{2}:[0-9]{2}", value):
         raise HTTPException(status_code=422, detail="start_time must be in HHMM or HH:MM format")
+    normalized = value.replace(":", "")
+    if int(normalized[:2]) > 23 or int(normalized[2:]) > 59:
+        raise HTTPException(status_code=422, detail="start_time must be a valid time between 00:00 and 23:59")
     return normalized
+
+
+def toronto_today() -> str:
+    return datetime.now(ZoneInfo("America/Toronto")).strftime("%Y%m%d")
 
 def format_date(value: str) -> str:
         digits = "".join(ch for ch in str(value) if ch.isdigit())
