@@ -4,6 +4,7 @@ Transform raw Metrolinx API responses into clean, frontend-friendly models
 from typing import List, Dict, Any, Optional
 from app.models.stops import NextServiceLine, Stop, StopDetails, NextService
 from app.models.journeys import JourneyResponse, JourneyService, JourneyTrip, JourneyStop
+from app.utils.journeys import remove_unnecessary_transfers
 from app.models.alerts import Alert, ServiceException
 from app.models.fares import FaresResponse, FareOption
 from app.models.service import (
@@ -224,7 +225,7 @@ def transform_journey(raw_data: Dict[str, Any], from_stop: str, to_stop: str, da
         to_stop=response_to_stop,
         date=response_date,
         start_time=response_start_time,
-        journeys=journeys
+        journeys=remove_unnecessary_transfers(journeys)
     )
 
 

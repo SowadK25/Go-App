@@ -1,0 +1,291 @@
+{
+  "trips": [
+    {
+      "departureTimeDisplay": "08:08",
+      "arrivalTimeDisplay": "09:47",
+      "transfers": 0,
+      "durationMinutes": 99,
+      "duration": "01:39:00",
+      "orderTime": "2026-10-13T08:08:00",
+      "transitType": 1,
+      "serviceCode": "31",
+      "serviceName": "Kitchener",
+      "lines": [
+        {
+          "lineDisplay": "KI",
+          "tripNumber": "3860",
+          "transitType": 1,
+          "transitTypeName": "RAIL",
+          "fromStopCode": "KI",
+          "fromStopTime": "08:08",
+          "fromStopDisplay": "Kitchener GO",
+          "fromNotesImages": [
+            "fewer-stops"
+          ],
+          "toStopCode": "UN",
+          "toStopTime": "09:47",
+          "toStopDisplay": "Union Station",
+          "toNotesImages": [
+            "fewer-stops"
+          ],
+          "transferStopCode": null,
+          "transferDisplay": null,
+          "headSign": "KI - Union Station",
+          "blockNumber": "62A",
+          "isExpress": true,
+          "serviceLineName": "Kitchener",
+          "isTransfer": false,
+          "stops": [
+            {
+              "name": "Kitchener GO",
+              "code": "KI",
+              "time": "08:08",
+              "transitType": 0
+            },
+            {
+              "name": "Guelph Central GO",
+              "code": "GL",
+              "time": "08:27",
+              "transitType": 0
+            },
+            {
+              "name": "Acton GO",
+              "code": "AC",
+              "time": "08:43",
+              "transitType": 0
+            },
+            {
+              "name": "Georgetown GO",
+              "code": "GE",
+              "time": "08:56",
+              "transitType": 0
+            },
+            {
+              "name": "Mount Pleasant GO",
+              "code": "MO",
+              "time": "09:06",
+              "transitType": 0
+            },
+            {
+              "name": "Brampton Innovation District GO",
+              "code": "BR",
+              "time": "09:12",
+              "transitType": 0
+            },
+            {
+              "name": "Bramalea GO",
+              "code": "BE",
+              "time": "09:20",
+              "transitType": 0
+            },
+            {
+              "name": "Union Station",
+              "code": "UN",
+              "time": "09:47",
+              "transitType": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "departureTimeDisplay": "08:13",
+      "arrivalTimeDisplay": "10:15",
+      "transfers": 1,
+      "durationMinutes": 122,
+      "duration": "02:02:00",
+      "orderTime": "2026-10-13T08:13:00",
+      "transitType": 2,
+      "serviceCode": "31",
+      "serviceName": "Kitchener",
+      "lines": [
+        {
+          "lineDisplay": "30",
+          "tripNumber": "30190",
+          "transitType": 0,
+          "transitTypeName": "BUS",
+          "fromStopCode": "KI",
+          "fromStopTime": "08:13",
+          "fromStopDisplay": "Kitchener GO",
+          "fromNotesImages": [],
+          "toStopCode": "BE",
+          "toStopTime": "09:33",
+          "toStopDisplay": "Bramalea GO",
+          "toNotesImages": [],
+          "transferStopCode": null,
+          "transferDisplay": "",
+          "headSign": "30 - Hwy 407 Bus Terminal",
+          "blockNumber": null,
+          "isExpress": false,
+          "serviceLineName": "Kitchener / Vaughan",
+          "isTransfer": false,
+          "stops": [
+            {
+              "name": "Kitchener GO",
+              "code": "KI",
+              "time": "08:13",
+              "transitType": 0
+            },
+            {
+              "name": "Weber St. W. @ Queen St. N.",
+              "code": "02530",
+              "time": "08:14",
+              "transitType": 0
+            },
+            {
+              "name": "Weber St. E. @ Montgomery Rd.",
+              "code": "02204",
+              "time": "08:19",
+              "transitType": 0
+            },
+            {
+              "name": "Mississauga Rd. @ Royal Bank Dr.",
+              "code": "01440",
+              "time": "09:11",
+              "transitType": 0
+            },
+            {
+              "name": "Syntex Crt. @ Financial Dr.",
+              "code": "00200",
+              "time": "09:11",
+              "transitType": 0
+            },
+            {
+              "name": "Bramalea GO",
+              "code": "BE",
+              "time": "09:33",
+              "transitType": 0
+            }
+          ]
+        },
+        {
+          "lineDisplay": "KI",
+          "tripNumber": "3862",
+          "transitType": 1,
+          "transitTypeName": "RAIL",
+          "fromStopCode": "BE",
+          "fromStopTime": "09:48",
+          "fromStopDisplay": "Bramalea GO",
+          "fromNotesImages": [
+            "fewer-stops"
+          ],
+          "toStopCode": "UN",
+          "toStopTime": "10:15",
+          "toStopDisplay": "Union Station",
+          "toNotesImages": [
+            "fewer-stops"
+          ],
+          "transferStopCode": "BE",
+          "transferDisplay": "Transfer at Bramalea GO",
+          "headSign": "KI - Union Station",
+          "blockNumber": "63A",
+          "isExpress": true,
+          "serviceLineName": "Kitchener",
+          "isTransfer": true,
+          "stops": [
+            {
+              "name": "Bramalea GO",
+              "code": "BE",
+              "time": "09:48",
+              "transitType": 0
+            },
+            {
+              "name": "Union Station",
+              "code": "UN",
+              "time": "10:15",
+              "transitType": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "departureTimeDisplay": "08:36",
+      "arrivalTimeDisplay": "10:15",
+      "transfers": 0,
+      "durationMinutes": 99,
+      "duration": "01:39:00",
+      "orderTime": "2026-10-13T08:36:00",
+      "transitType": 1,
+      "serviceCode": "31",
+      "serviceName": "Kitchener",
+      "lines": [
+        {
+          "lineDisplay": "KI",
+          "tripNumber": "3862",
+          "transitType": 1,
+          "transitTypeName": "RAIL",
+          "fromStopCode": "KI",
+          "fromStopTime": "08:36",
+          "fromStopDisplay": "Kitchener GO",
+          "fromNotesImages": [
+            "fewer-stops"
+          ],
+          "toStopCode": "UN",
+          "toStopTime": "10:15",
+          "toStopDisplay": "Union Station",
+          "toNotesImages": [
+            "fewer-stops"
+          ],
+          "transferStopCode": null,
+          "transferDisplay": null,
+          "headSign": "KI - Union Station",
+          "blockNumber": "63A",
+          "isExpress": true,
+          "serviceLineName": "Kitchener",
+          "isTransfer": false,
+          "stops": [
+            {
+              "name": "Kitchener GO",
+              "code": "KI",
+              "time": "08:36",
+              "transitType": 0
+            },
+            {
+              "name": "Guelph Central GO",
+              "code": "GL",
+              "time": "08:55",
+              "transitType": 0
+            },
+            {
+              "name": "Acton GO",
+              "code": "AC",
+              "time": "09:11",
+              "transitType": 0
+            },
+            {
+              "name": "Georgetown GO",
+              "code": "GE",
+              "time": "09:24",
+              "transitType": 0
+            },
+            {
+              "name": "Mount Pleasant GO",
+              "code": "MO",
+              "time": "09:34",
+              "transitType": 0
+            },
+            {
+              "name": "Brampton Innovation District GO",
+              "code": "BR",
+              "time": "09:40",
+              "transitType": 0
+            },
+            {
+              "name": "Bramalea GO",
+              "code": "BE",
+              "time": "09:48",
+              "transitType": 0
+            },
+            {
+              "name": "Union Station",
+              "code": "UN",
+              "time": "10:15",
+              "transitType": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

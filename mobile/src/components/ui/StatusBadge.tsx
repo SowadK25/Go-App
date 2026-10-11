@@ -5,7 +5,7 @@ export function StatusBadge({
   tone = 'neutral',
 }: {
   label: string;
-  tone?: 'success' | 'warning' | 'neutral';
+  tone?: 'success' | 'warning' | 'neutral' | 'danger';
 }) {
   return (
     <View style={[styles.status, statusColors(tone)]}>

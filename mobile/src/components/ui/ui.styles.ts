@@ -86,14 +86,23 @@ export const styles = StyleSheet.create({
   emptyText: { color: colors.muted, fontSize: 13, textAlign: 'center', lineHeight: 20 },
 });
 export const badgeColor = (color: string) => ({ backgroundColor: color });
-export const statusColors = (tone: 'success' | 'warning' | 'neutral') => ({
+export const statusColors = (tone: 'success' | 'warning' | 'neutral' | 'danger') => ({
   backgroundColor:
     tone === 'success'
       ? colors.successSoft
       : tone === 'warning'
         ? colors.warningSoft
-        : colors.field,
+        : tone === 'danger'
+          ? colors.dangerSoft
+          : colors.field,
 });
-export const statusTextColor = (tone: 'success' | 'warning' | 'neutral') => ({
-  color: tone === 'success' ? colors.success : tone === 'warning' ? colors.warning : colors.muted,
+export const statusTextColor = (tone: 'success' | 'warning' | 'neutral' | 'danger') => ({
+  color:
+    tone === 'success'
+      ? colors.success
+      : tone === 'warning'
+        ? colors.warning
+        : tone === 'danger'
+          ? colors.danger
+          : colors.muted,
 });

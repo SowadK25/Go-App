@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { torontoDateTime } from '../../utils/transit';
+import { isPastDate, canGoToPreviousMonth } from '../../utils/calendar';
 import { Icon } from '../ui/Icon';
 import { IconButton } from '../ui/IconButton';
 import { styles } from './TripDateField.styles';
@@ -48,6 +49,7 @@ export function TripDateField({
   );
 
   const selectDate = (selected: Date) => {
+    if (isPastDate(selected, today)) return;
     // The calendar changes only the day; keep the chosen departure time.
     const next = new Date(value);
     next.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
@@ -56,7 +58,10 @@ export function TripDateField({
   };
 
   const toggleCalendar = () => {
-    if (!expanded) setMonth(new Date(value.getFullYear(), value.getMonth(), 1, 12));
+    if (!expanded) {
+      const selected = isPastDate(value, today) ? today : value;
+      setMonth(new Date(selected.getFullYear(), selected.getMonth(), 1, 12));
+    }
     setExpanded(!expanded);
   };
 
@@ -97,6 +102,7 @@ export function TripDateField({
             <IconButton
               name="chevron-left"
               label="Previous month"
+              disabled={!canGoToPreviousMonth(month, today)}
               onPress={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1, 12))}
             />
             <Text accessibilityRole="header" style={styles.month}>
@@ -125,8 +131,12 @@ export function TripDateField({
                     day: 'numeric',
                     year: 'numeric',
                   })}
-                  accessibilityState={{ selected: sameDay(day, value) }}
-                  style={styles.day}
+                  accessibilityState={{
+                    selected: sameDay(day, value),
+                    disabled: isPastDate(day, today),
+                  }}
+                  disabled={isPastDate(day, today)}
+                  style={[styles.day, isPastDate(day, today) && styles.disabledDay]}
                   onPress={() => selectDate(day)}
                 >
                   <View

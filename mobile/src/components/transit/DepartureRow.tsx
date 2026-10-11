@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { Icon } from '../ui/Icon';
 import { LineBadge } from '../ui/LineBadge';
 import { StatusBadge } from '../ui/StatusBadge';
 import { serviceTime } from '../../utils/transit';
@@ -11,6 +12,7 @@ export function DepartureRow({
   status,
   scheduled,
   origin,
+  onPress,
 }: {
   time: string;
   destination: string;
@@ -19,9 +21,10 @@ export function DepartureRow({
   status?: string | null;
   scheduled?: string | null;
   origin?: string;
+  onPress?: () => void;
 }) {
-  return (
-    <View style={styles.departure}>
+  const content = (
+    <>
       <View style={styles.between}>
         <Text style={styles.departureTime}>{serviceTime(time)}</Text>
         {!!status && <StatusBadge label={status} />}
@@ -37,6 +40,24 @@ export function DepartureRow({
           )}
         </View>
       </View>
-    </View>
+      {onPress && (
+        <View style={styles.between}>
+          <Text style={styles.link}>View stops & times</Text>
+          <Icon name="chevron-right" size={16} />
+        </View>
+      )}
+    </>
+  );
+  return onPress ? (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`View trip to ${destination} departing ${serviceTime(time)}`}
+      onPress={onPress}
+      style={({ pressed }) => [styles.departure, pressed && styles.pressed]}
+    >
+      {content}
+    </Pressable>
+  ) : (
+    <View style={styles.departure}>{content}</View>
   );
 }

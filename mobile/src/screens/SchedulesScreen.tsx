@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { useIsFocused } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { MainTabParams } from '../navigation/types';
+import type { MainTabParams, RootStackParams } from '../navigation/types';
+import { torontoDateTime } from '../utils/transit';
 import { useLines, useStops } from '../hooks/transitQueries';
 import { transitApi } from '../api/transit';
 import { Screen } from '../components/layout/Screen';
@@ -11,18 +13,22 @@ import { Card } from '../components/ui/Card';
 import { SectionHeading } from '../components/ui/SectionHeading';
 import { ChoiceChip } from '../components/transit/ChoiceChip';
 import { DepartureRow } from '../components/transit/DepartureRow';
+import { LinePicker } from '../components/transit/LinePicker';
+import { LineBadge } from '../components/ui/LineBadge';
+import { Icon } from '../components/ui/Icon';
 import { RequestState } from '../components/RequestState';
 import { styles } from './screens.styles';
-import { styles as transitStyles } from '../components/transit/transit.styles';
+import { styles as linePickerStyles } from '../components/transit/LinePicker.styles';
 export function SchedulesScreen({
   route,
   navigation,
 }: BottomTabScreenProps<MainTabParams, 'Schedules'>) {
   const lines = useLines();
+  const rootNavigation = useNavigation<NativeStackNavigationProp<RootStackParams>>();
   const stops = useStops();
-  const focused = useIsFocused();
   const [lineCode, setLineCode] = useState<string | null>(null);
   const [direction, setDirection] = useState<string | null>(null);
+  const [showLinePicker, setShowLinePicker] = useState(false);
   useEffect(() => {
     if (route.params?.lineCode) {
       setLineCode(route.params.lineCode);
@@ -44,20 +50,12 @@ export function SchedulesScreen({
       transitApi.lineSchedule(selected!.code, activeDirection!, undefined, signal),
     staleTime: 300000,
   });
-  const union = useQuery({
-    queryKey: ['unionDepartures'],
-    queryFn: ({ signal }) => transitApi.unionDepartures(signal),
-    staleTime: 15000,
-    refetchInterval: 30000,
-    subscribed: focused,
-  });
   return (
     <Screen
       refreshControl={
         <RefreshControl
-          refreshing={union.isRefetching || schedule.isRefetching}
+          refreshing={lines.isRefetching || schedule.isRefetching}
           onRefresh={() => {
-            void union.refetch();
             void lines.refetch();
             if (selected && activeDirection) void schedule.refetch();
           }}
@@ -78,25 +76,23 @@ export function SchedulesScreen({
         {lines.isPending && (
           <RequestState loading={lines.fetchStatus === 'fetching'} message="Loading lines..." />
         )}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={transitStyles.chips}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Choose schedule line"
+          disabled={!lines.data?.lines?.length}
+          style={linePickerStyles.trigger}
+          onPress={() => setShowLinePicker(true)}
         >
-          {lines.data?.lines?.map((line) => (
-            <ChoiceChip
-              key={line.code}
-              label={line.name}
-              lineCode={line.code}
-              selected={selected?.code === line.code}
-              onPress={() => {
-                setLineCode(line.code);
-                navigation.setParams({ lineCode: line.code });
-                setDirection(null);
-              }}
-            />
-          ))}
-        </ScrollView>
+          {selected && <LineBadge code={selected.code} />}
+          <View style={linePickerStyles.details}>
+            <Text style={linePickerStyles.name}>{selected?.name ?? 'Choose a line'}</Text>
+            <Text style={linePickerStyles.mode}>
+              {selected?.vehicle_types?.join(' & ') || 'Browse train and bus lines'}
+            </Text>
+          </View>
+          <Icon name="chevron-down" size={18} />
+        </Pressable>
+        {!!selected?.directions?.length && <Text style={styles.label}>Direction of travel</Text>}
         <View style={styles.wrap}>
           {selected?.directions?.map((value) => (
             <ChoiceChip
@@ -113,6 +109,17 @@ export function SchedulesScreen({
           <Text style={styles.subtitle}>No schedule is listed for this line today.</Text>
         )}
       </Card>
+      <LinePicker
+        lines={lines.data?.lines ?? []}
+        selectedCode={selected?.code}
+        visible={showLinePicker}
+        onClose={() => setShowLinePicker(false)}
+        onSelect={(line) => {
+          setLineCode(line.code);
+          navigation.setParams({ lineCode: line.code });
+          setDirection(null);
+        }}
+      />
       {selected && (
         <Card padded={false}>
           <View style={styles.resultsHeader}>
@@ -146,6 +153,20 @@ export function SchedulesScreen({
               }
               lineCode={selected.code}
               status="Scheduled"
+              onPress={() =>
+                rootNavigation.navigate('ScheduleTripDetails', {
+                  tripNumber: trip.number,
+                  title: trip.display || selected.name,
+                  lineCode: selected.code,
+                  date: (schedule.data?.date ?? torontoDateTime().date).replace(/-/g, ''),
+                  scheduledStops: trip.stops?.map((stop) => ({
+                    code: stop.code,
+                    order: stop.order,
+                    time: stop.time,
+                    is_major: stop.is_major,
+                  })),
+                })
+              }
             />
           ))}
           {schedule.data && !schedule.data.trips?.length && (
@@ -153,41 +174,6 @@ export function SchedulesScreen({
           )}
         </Card>
       )}
-      <Card padded={false}>
-        <View style={styles.resultsHeader}>
-          <SectionHeading title="Union Station Departures" />
-          <Text style={styles.subtitle}>Live departure board</Text>
-        </View>
-        {union.isError && (
-          <RequestState
-            message={union.error.message}
-            onRetry={() => {
-              void union.refetch();
-            }}
-          />
-        )}
-        {union.data?.departures?.map((departure, index) => (
-          <DepartureRow
-            key={`${departure.trip_number}-${index}`}
-            time={departure.departure_time}
-            destination={departure.destination || departure.service}
-            platform={departure.platform}
-            status={departure.info || departure.boarding_status}
-          />
-        ))}
-        {!union.data?.departures?.length && (
-          <RequestState
-            loading={union.isPending && union.fetchStatus === 'fetching'}
-            message={
-              union.isPending
-                ? 'Loading departures...'
-                : union.isError
-                  ? 'Departures unavailable.'
-                  : 'No departures were reported.'
-            }
-          />
-        )}
-      </Card>
     </Screen>
   );
 }

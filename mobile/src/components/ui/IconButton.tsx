@@ -23,6 +23,7 @@ export function IconButton({
       accessibilityLabel={label}
       accessibilityState={{ disabled, selected }}
       disabled={disabled}
+      hitSlop={8}
       onPress={onPress}
       style={({ pressed }) => [
         styles.iconButton,

@@ -23,17 +23,17 @@ class MetrolinxClient:
             ("Schedule/Line/All/", 86400),
             ("Schedule/Line/Stop/", 86400),
             ("Schedule/Line/", 86400),
-            ("Schedule/Trip/", 3600),
+            ("Schedule/Trip/", 60),
             ("Schedule/Journey/", 30),
             ("Fares/", 86400),
             ("ServiceUpdate/ServiceAlert/All", 60),
             ("ServiceUpdate/InformationAlert/All", 60),
             ("ServiceUpdate/UnionDepartures/All", 15),
-            ("ServiceUpdate/Exceptions/Train", 60),
-            ("ServiceUpdate/Exceptions/Bus", 60),
-            ("ServiceUpdate/Exceptions/All", 60),
-            ("ServiceataGlance/Buses/All", 15),
-            ("ServiceataGlance/Trains/All", 15),
+            ("ServiceUpdate/Exceptions/Train", 120),
+            ("ServiceUpdate/Exceptions/Bus", 120),
+            ("ServiceUpdate/Exceptions/All", 120),
+            ("ServiceataGlance/Buses/All", 60),
+            ("ServiceataGlance/Trains/All", 60),
         ]
 
         for prefix, ttl in cache_rules:

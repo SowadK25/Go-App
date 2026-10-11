@@ -56,6 +56,21 @@ export const transitApi = {
     ),
   unionDepartures: (signal?: AbortSignal) =>
     request<GetResponses['/api/service/union/departures']>('/api/service/union/departures', signal),
+  liveService: (mode: 'train' | 'bus', signal?: AbortSignal) =>
+    request<GetResponses['/api/service/trains']>(
+      `/api/service/${mode === 'train' ? 'trains' : 'buses'}`,
+      signal,
+    ),
+  serviceExceptions: (mode: 'train' | 'bus', signal?: AbortSignal) =>
+    request<GetResponses['/api/service/exceptions/train']>(
+      `/api/service/exceptions/${mode}`,
+      signal,
+    ),
+  tripSchedule: (tripNumber: string, date: string, signal?: AbortSignal) =>
+    request<GetResponses['/api/schedules/trips/{trip_number}']>(
+      `/api/schedules/trips/${code(tripNumber)}${query({ schedule_date: date })}`,
+      signal,
+    ),
   alerts: (
     filters: { line_code?: string; stop_code?: string; trip_number?: string } = {},
     signal?: AbortSignal,

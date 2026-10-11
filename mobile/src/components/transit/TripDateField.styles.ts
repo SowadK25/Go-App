@@ -58,6 +58,7 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   currentDay: { borderWidth: 1, borderColor: colors.primary },
+  disabledDay: { opacity: 0.3 },
   selectedDay: { backgroundColor: colors.primary },
   dayLabel: { color: colors.text, fontSize: 13 },
   selectedLabel: { color: colors.surface, fontWeight: '700' },

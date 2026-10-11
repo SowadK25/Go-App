@@ -2,6 +2,10 @@
 
 FastAPI backend for the GO Transit mobile app. It fetches Metrolinx data and exposes typed responses for stations, departures, journey planning, schedules, fares, and service alerts.
 
+Journey searches use the official GO website's public timetable as the primary source. Open Metrolinx journey options are requested only when the official request fails or returns an invalid response. A valid empty timetable stays empty. Results are deduplicated, sorted by departure time, and limited to the requested count. Timetables cache for five minutes. Stations, fares, alerts, and real-time service data continue to use Open Data.
+
+Longer mixed-mode journeys remain available. For Open Data fallback results, the backend only removes slower same-line, same-station train changes when the same boarding service has a direct trip arriving no later.
+
 ## Prerequisites
 
 - Python 3.11 (the version used to verify this setup).
@@ -100,3 +104,7 @@ Upstream TLS verification is enabled. Provider connection failures return 502, t
 - Redis connection failure: start the Compose service or use `CACHE_BACKEND=memory` for local development.
 - Health works but transit requests fail: check the API key and connectivity to Metrolinx.
 - Phone cannot reach the API: check the LAN IP, shared network, and firewall access. `localhost` on the phone refers to the phone itself.
+
+Live train/bus service feeds cache for 60 seconds; service exceptions cache for 120 seconds. These caches are shared by requests within the configured cache backend. Station predictions and Union departures retain their existing 15-second cache.
+
+Detailed trip schedules cache for 60 seconds to support stop predictions on an opened journey.

@@ -50,6 +50,8 @@ export const styles = StyleSheet.create({
     borderTopColor: colors.border,
     gap: 8,
   },
+  journeySection: { gap: 16 },
+  stopNotes: { gap: 4 },
   alertBody: { color: colors.muted, fontSize: 13, lineHeight: 21 },
   updated: { color: colors.muted, fontSize: 11 },
 });

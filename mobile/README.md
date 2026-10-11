@@ -44,6 +44,8 @@ The screens handle empty results, API failures, loading, offline requests, and s
 
 ## API types and checks
 
+Journey cards and each transfer leg show live train/bus status from the service feeds, including delays, early running, and cancellations. The feeds are shared between cards and details, refresh live service data every 60 seconds and cancellation feeds every two minutes while the trip view is active, and pause on Fares or when leaving the screen. Matching uses trip number, line, mode, and the leg's calendar date. Polling is limited to legs within 30 minutes of boarding until 90 minutes after their scheduled arrival, allowing for delays. Far-future and finished trips do not poll. Pull to refresh results or details for a manual update; live queries do not automatically retry failed requests. Future services show Scheduled; missing or stale live records show Status unavailable. Opening a current journey fetches stop-level predictions for its unique trip numbers, refreshing once a minute while visible. Result cards only reuse those cached predictions and do not fetch every result. Real predictions appear as scheduled-to-updated times with red for late and green for early; missing estimates keep the planned time. Arrival and departure predictions are matched to their own events, rather than applying a trip-wide delay to every stop.
+
 Generated types are committed in `src/api/generated.ts`. After changing backend response models, regenerate them from the backend's OpenAPI schema:
 
 ```powershell

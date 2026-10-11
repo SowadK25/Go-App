@@ -6,13 +6,14 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParams } from '../../navigation/types';
 import type { Stop } from '../../api/generated';
 import { usePreferences } from '../../storage/PreferencesProvider';
-import { torontoDateTime, clockTime } from '../../utils/transit';
+import { torontoDateTime, clockTime, easternTimeLabel } from '../../utils/transit';
 import { Card } from '../ui/Card';
 import { SectionHeading } from '../ui/SectionHeading';
 import { Icon } from '../ui/Icon';
 import { IconButton } from '../ui/IconButton';
 import { ActionButton } from '../ui/ActionButton';
 import { StationPicker } from './StationPicker';
+import { StationField } from './StationField';
 import { TripDateField } from './TripDateField';
 import { styles } from './transit.styles';
 type SelectedStop = Pick<Stop, 'id' | 'name' | 'type'>;
@@ -102,30 +103,20 @@ export function TripPlanner() {
           <Text style={styles.link}>＋ Edit home & work stations</Text>
         </Pressable>
         <View style={styles.fields}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Choose origin station"
-            style={styles.field}
-            onPress={() => setPicker('from')}
-          >
-            <View style={styles.originDot} />
-            <Text style={[styles.fieldText, !from && styles.placeholder]}>
-              {from?.name ?? 'From station'}
-            </Text>
-            <Icon name="chevron-down" size={16} />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Choose destination station"
-            style={styles.field}
-            onPress={() => setPicker('to')}
-          >
-            <View style={styles.destinationDot} />
-            <Text style={[styles.fieldText, !to && styles.placeholder]}>
-              {to?.name ?? 'To station'}
-            </Text>
-            <Icon name="chevron-down" size={16} />
-          </Pressable>
+          <View style={styles.stationFields}>
+            <StationField
+              kind="origin"
+              name={from?.name}
+              onSelect={() => setPicker('from')}
+              onClear={() => setFrom(null)}
+            />
+            <StationField
+              kind="destination"
+              name={to?.name}
+              onSelect={() => setPicker('to')}
+              onClear={() => setTo(null)}
+            />
+          </View>
           <View style={styles.swap}>
             <IconButton
               name="repeat"
@@ -145,7 +136,7 @@ export function TripPlanner() {
         >
           <Icon name="clock" size={16} />
           <Text style={styles.fieldText}>
-            {clockTime(date.getHours(), date.getMinutes())} · Toronto time
+            {clockTime(date.getHours(), date.getMinutes())} {easternTimeLabel(date)}
           </Text>
         </Pressable>
         {showTimePicker && (

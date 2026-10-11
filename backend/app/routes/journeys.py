@@ -1,6 +1,9 @@
 import httpx
+import logging
 from fastapi import APIRouter, Query, HTTPException, Path
 from app.clients.metrolinx import MetrolinxClient
+from app.clients.go_schedules import GoSchedulesClient
+from app.utils.official_journeys import transform_timetable, select_journeys
 from app.utils.errors import upstream_error
 from app.models.journeys import JourneyResponse
 from app import transformers as transform
@@ -8,17 +11,23 @@ from app.utils.utils import normalize_date, normalize_time
 
 router = APIRouter(prefix="/api/journeys", tags=["journeys"])
 client = MetrolinxClient()
+official_client = GoSchedulesClient()
+logger = logging.getLogger(__name__)
 
 async def _fetch_journeys(from_stop: str, to_stop: str, journey_date: str, start_time: str, max_journeys: int) -> JourneyResponse:
     try:
-        raw_data = await client.get_journey(
-            from_stop_code=from_stop,
-            to_stop_code=to_stop,
-            date=journey_date,
-            start_time=start_time,
-            max_journeys=max_journeys
-        )
-        return transform.transform_journey(raw_data, from_stop, to_stop, journey_date, start_time)
+        try:
+            payload = await official_client.get_timetable(from_stop, to_stop, journey_date)
+            result = transform_timetable(payload, from_stop, to_stop, journey_date, start_time)
+        except Exception as exc:
+            logger.warning("Official timetable unavailable; using Open Data: %s", type(exc).__name__)
+            payload = await client.get_journey(
+                from_stop_code=from_stop, to_stop_code=to_stop, date=journey_date,
+                start_time=start_time, max_journeys=max_journeys,
+            )
+            result = transform.transform_journey(payload, from_stop, to_stop, journey_date, start_time)
+        result.journeys = select_journeys(result, max_journeys)
+        return result
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 404:
             raise HTTPException(status_code=404, detail="No journeys found for the given stops")

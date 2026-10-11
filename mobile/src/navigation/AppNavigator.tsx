@@ -8,6 +8,9 @@ import { SchedulesScreen } from '../screens/SchedulesScreen';
 import { AlertsScreen } from '../screens/AlertsScreen';
 import { DeparturesScreen } from '../screens/DeparturesScreen';
 import { TripResultsScreen } from '../screens/TripResultsScreen';
+import { JourneyDetailsScreen } from '../screens/JourneyDetailsScreen';
+import { ScheduleTripDetailsScreen } from '../screens/ScheduleTripDetailsScreen';
+import { UnionDeparturesScreen } from '../screens/UnionDeparturesScreen';
 import { PreferencesScreen } from '../screens/PreferencesScreen';
 import type { MainTabParams, RootStackParams } from './types';
 import { stackOptions, tabOptions } from './navigation.styles';
@@ -42,8 +45,18 @@ function MainTabs() {
 export function AppNavigator() {
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={stackOptions}>
+      <Stack.Navigator initialRouteName="Main" screenOptions={stackOptions}>
+        <Stack.Screen
+          name="ScheduleTripDetails"
+          component={ScheduleTripDetailsScreen}
+          options={{ title: 'Trip Details' }}
+        />
         <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
+        <Stack.Screen
+          name="UnionDepartures"
+          component={UnionDeparturesScreen}
+          options={{ title: 'Union Departures' }}
+        />
         <Stack.Screen
           name="Departures"
           component={DeparturesScreen}
@@ -58,6 +71,11 @@ export function AppNavigator() {
           name="Preferences"
           component={PreferencesScreen}
           options={{ title: 'Saved Stations' }}
+        />
+        <Stack.Screen
+          name="JourneyDetails"
+          component={JourneyDetailsScreen}
+          options={{ title: 'Trip Details' }}
         />
         <Stack.Screen
           name="Alerts"

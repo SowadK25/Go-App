@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { FlatList, Modal, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { FlatList, Text, View } from 'react-native';
+import { SelectionModal } from '../layout/SelectionModal';
 import { useStops } from '../../hooks/transitQueries';
 import type { Stop } from '../../api/generated';
 import { SearchField } from './SearchField';
@@ -31,53 +31,51 @@ export function StationPicker({
     [stops.data, search],
   );
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <SafeAreaView style={styles.modalSafe}>
-        <View style={styles.modalBody}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{title}</Text>
-            <IconButton name="x" label="Close station picker" onPress={onClose} />
-          </View>
-          <SearchField value={search} onChange={setSearch} />
-          {stops.isError && (
+    <SelectionModal visible={visible} onClose={onClose}>
+      <View style={styles.modalBody}>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>{title}</Text>
+          <IconButton name="x" label="Close station picker" onPress={onClose} />
+        </View>
+        <SearchField value={search} onChange={setSearch} />
+        {stops.isError && (
+          <RequestState
+            message={stops.error.message}
+            onRetry={() => {
+              void stops.refetch();
+            }}
+          />
+        )}
+        <FlatList
+          style={styles.modalList}
+          data={filtered}
+          keyExtractor={(stop) => stop.id}
+          keyboardShouldPersistTaps="handled"
+          ListEmptyComponent={
             <RequestState
-              message={stops.error.message}
-              onRetry={() => {
-                void stops.refetch();
+              loading={stops.isPending && stops.fetchStatus !== 'paused'}
+              message={
+                stops.fetchStatus === 'paused'
+                  ? 'Reconnect to load stations.'
+                  : stops.isPending
+                    ? 'Loading stations...'
+                    : 'No matching stations.'
+              }
+            />
+          }
+          renderItem={({ item }) => (
+            <StationRow
+              stop={item}
+              favoriteAction={false}
+              onPress={() => {
+                onSelect(item);
+                setSearch('');
+                onClose();
               }}
             />
           )}
-          <FlatList
-            style={styles.modalList}
-            data={filtered}
-            keyExtractor={(stop) => stop.id}
-            keyboardShouldPersistTaps="handled"
-            ListEmptyComponent={
-              <RequestState
-                loading={stops.isPending && stops.fetchStatus !== 'paused'}
-                message={
-                  stops.fetchStatus === 'paused'
-                    ? 'Reconnect to load stations.'
-                    : stops.isPending
-                      ? 'Loading stations...'
-                      : 'No matching stations.'
-                }
-              />
-            }
-            renderItem={({ item }) => (
-              <StationRow
-                stop={item}
-                favoriteAction={false}
-                onPress={() => {
-                  onSelect(item);
-                  setSearch('');
-                  onClose();
-                }}
-              />
-            )}
-          />
-        </View>
-      </SafeAreaView>
-    </Modal>
+        />
+      </View>
+    </SelectionModal>
   );
 }

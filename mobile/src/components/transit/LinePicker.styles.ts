@@ -1,0 +1,52 @@
+import { StyleSheet } from 'react-native';
+import { colors } from '../../theme/tokens';
+
+export const styles = StyleSheet.create({
+  container: { flex: 1, padding: 16, gap: 16 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  heading: { color: colors.text, fontSize: 22, fontWeight: '700' },
+  filters: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: 4,
+    gap: 4,
+  },
+  filter: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeFilter: { backgroundColor: colors.primary },
+  filterText: { color: colors.muted, fontSize: 13, fontWeight: '600' },
+  activeFilterText: { color: colors.surface },
+  count: { color: colors.muted, fontSize: 12 },
+  list: { flex: 1, backgroundColor: colors.surface, borderRadius: 12 },
+  row: {
+    minHeight: 72,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  selectedRow: { backgroundColor: colors.primarySoft },
+  pressed: { opacity: 0.7 },
+  details: { flex: 1, gap: 4 },
+  name: { color: colors.text, fontSize: 14, fontWeight: '600' },
+  mode: { color: colors.muted, fontSize: 12 },
+  trigger: {
+    minHeight: 64,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: colors.field,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+  },
+});

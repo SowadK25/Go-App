@@ -14,6 +14,14 @@ export function canonicalLineCode(code: string) {
   // Metrolinx still uses GT for the Kitchener line in its API.
   return code.toUpperCase() === 'GT' ? 'KI' : code.toUpperCase();
 }
+
+export function serviceLineCode(service: string) {
+  const name = service.trim().toLowerCase();
+  const line = railLines.find(
+    (line) => line.name.toLowerCase() === name || line.code === canonicalLineCode(service.trim()),
+  );
+  return line?.code ?? (/^\d+$/.test(service.trim()) ? service.trim() : undefined);
+}
 export function torontoDateTime(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Toronto',
@@ -84,4 +92,44 @@ export function journeyDuration(value: string) {
 
 export function vehicleName(value: string) {
   return value === 'T' ? 'Train' : value === 'B' ? 'Bus' : value;
+}
+
+export function serviceDate(value: string) {
+  const digits = value.replace(/-/g, '');
+  if (!/^\d{8}$/.test(digits)) return value;
+  const date = new Date(
+    Date.UTC(Number(digits.slice(0, 4)), Number(digits.slice(4, 6)) - 1, Number(digits.slice(6))),
+  );
+  return date.toLocaleDateString('en-CA', {
+    timeZone: 'UTC',
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+export function easternTimeLabel(value: string | Date) {
+  const digits = typeof value === 'string' ? value.replace(/-/g, '') : null;
+  const date = digits
+    ? new Date(
+        Date.UTC(
+          Number(digits.slice(0, 4)),
+          Number(digits.slice(4, 6)) - 1,
+          Number(digits.slice(6, 8)),
+          12,
+        ),
+      )
+    : new Date(
+        Date.UTC(
+          (value as Date).getFullYear(),
+          (value as Date).getMonth(),
+          (value as Date).getDate(),
+          12,
+        ),
+      );
+  return (
+    new Intl.DateTimeFormat('en-US', { timeZone: 'America/Toronto', timeZoneName: 'short' })
+      .formatToParts(date)
+      .find((part) => part.type === 'timeZoneName')?.value ?? 'ET'
+  );
 }

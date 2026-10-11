@@ -35,7 +35,7 @@
     "typecheck": "tsc --noEmit",
     "api:generate": "node scripts/backend-task.cjs generate_mobile_types.py",
     "api:check": "node scripts/backend-task.cjs generate_mobile_types.py --check",
-    "test": "node --test scripts/api-client.test.cjs",
+    "test": "node --test scripts/*.test.cjs",
     "format": "prettier --write App.tsx \"src/**/*.{ts,tsx}\"",
     "format:check": "prettier --check App.tsx \"src/**/*.{ts,tsx}\""
   },
