@@ -1,3 +1,4 @@
 src/api/generated.ts
+src/components/map/generatedAssets.ts
 .expo/
 node_modules/

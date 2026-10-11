@@ -1,4 +1,5 @@
-import { Pressable, Text } from 'react-native';
+import { Text } from 'react-native';
+import { MotionPressable } from '../ui/MotionPressable';
 import { LineBadge } from '../ui/LineBadge';
 import { styles } from './transit.styles';
 export function ChoiceChip({
@@ -13,7 +14,7 @@ export function ChoiceChip({
   lineCode?: string;
 }) {
   return (
-    <Pressable
+    <MotionPressable
       accessibilityRole="button"
       accessibilityState={{ selected }}
       onPress={onPress}
@@ -21,6 +22,6 @@ export function ChoiceChip({
     >
       {lineCode && <LineBadge code={lineCode} />}
       <Text style={[styles.chipText, selected && styles.selectedChipText]}>{label}</Text>
-    </Pressable>
+    </MotionPressable>
   );
 }

@@ -2,6 +2,8 @@
 
 FastAPI backend for the GO Transit mobile app. It fetches Metrolinx data and exposes typed responses for stations, departures, journey planning, schedules, fares, and service alerts.
 
+`GET /api/map/network` supplies station coordinates, route membership, and published train/bus shapes from [GO's official GTFS feed](https://www.gotransit.com/en/partner-with-us/software-developers). It downloads the ZIP once per day through the shared cache, reads it without extracting files, parses it in a worker thread, and simplifies route shapes to a 25-metre tolerance. The first request can take several seconds; simultaneous requests share one download. Cached responses avoid additional Open Data calls. If a refresh fails, the process can return its last good map with `stale=true`; an initial failure returns a safe 503. Responses are compressed when the client supports gzip. This is a published network overview, independent of service running today.
+
 Journey searches use the official GO website's public timetable as the primary source. Open Metrolinx journey options are requested only when the official request fails or returns an invalid response. A valid empty timetable stays empty. Results are deduplicated, sorted by departure time, and limited to the requested count. Timetables cache for five minutes. Stations, fares, alerts, and real-time service data continue to use Open Data.
 
 Longer mixed-mode journeys remain available. For Open Data fallback results, the backend only removes slower same-line, same-station train changes when the same boarding service has a direct trip arriving no later.

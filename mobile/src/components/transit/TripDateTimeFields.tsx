@@ -1,5 +1,6 @@
+import { MotionPressable } from '../ui/MotionPressable';
 import { useState } from 'react';
-import { Platform, Pressable, Text } from 'react-native';
+import { Platform, Text } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { clockTime, easternTimeLabel } from '../../utils/transit';
 import { Icon } from '../ui/Icon';
@@ -20,7 +21,7 @@ export function TripDateTimeFields({
   return (
     <>
       <TripDateField value={value} onChange={onChange} />
-      <Pressable
+      <MotionPressable
         accessibilityRole="button"
         accessibilityLabel={timeLabel}
         style={styles.field}
@@ -30,14 +31,15 @@ export function TripDateTimeFields({
         <Text style={styles.fieldText}>
           {clockTime(value.getHours(), value.getMinutes())} {easternTimeLabel(value)}
         </Text>
-      </Pressable>
+      </MotionPressable>
       {showTimePicker && (
         <DateTimePicker
           value={value}
           mode="time"
           is24Hour={false}
+          minuteInterval={15}
           locale={Platform.OS === 'ios' ? 'en-US' : undefined}
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          display="spinner"
           onChange={(_event, selected) => {
             if (Platform.OS !== 'ios') setShowTimePicker(false);
             if (selected) onChange(selected);

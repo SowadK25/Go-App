@@ -1,7 +1,8 @@
 import logging
 from fastapi import FastAPI, Request
 from starlette.responses import JSONResponse
-from app.routes import stops, journeys, alerts, schedules, fares, service
+from app.routes import stops, journeys, alerts, schedules, fares, service, network_map
+from starlette.middleware.gzip import GZipMiddleware
 from app.config import CACHE_BACKEND, RATE_LIMIT_PER_MIN
 from app.utils.cache import get_cache_backend
 from app.models.health import HealthResponse
@@ -15,6 +16,7 @@ app = FastAPI(
 )
 
 app.state.cache_backend = get_cache_backend()
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 
 @app.on_event("startup")
@@ -60,6 +62,7 @@ app.include_router(alerts.router)
 app.include_router(schedules.router)
 app.include_router(fares.router)
 app.include_router(service.router)
+app.include_router(network_map.router)
 
 @app.get("/health", response_model=HealthResponse)
 async def health():

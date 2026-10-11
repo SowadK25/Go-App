@@ -21,6 +21,7 @@ export type RootStackParams = {
     searchMode?: JourneySearchMode;
   };
   Preferences: undefined;
+  SystemMap: undefined;
   JourneyDetails: { journey: JourneyService; fromName: string; toName: string; date: string };
   Alerts: { lineCodes?: string[] } | undefined;
   UnionDepartures: undefined;

@@ -15,6 +15,7 @@ import { JourneyDetailsScreen } from '../screens/JourneyDetailsScreen';
 import { ScheduleTripDetailsScreen } from '../screens/ScheduleTripDetailsScreen';
 import { UnionDeparturesScreen } from '../screens/UnionDeparturesScreen';
 import { PreferencesScreen } from '../screens/PreferencesScreen';
+import { SystemMapScreen } from '../screens/SystemMapScreen';
 import type { MainTabParams, RootStackParams } from './types';
 import { stackOptions, tabOptions } from './navigation.styles';
 const Stack = createNativeStackNavigator<RootStackParams>();
@@ -55,6 +56,11 @@ export function AppNavigator() {
           options={{ title: 'Trip Details' }}
         />
         <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
+        <Stack.Screen
+          name="SystemMap"
+          component={SystemMapScreen}
+          options={{ title: 'System Map' }}
+        />
         <Stack.Screen
           name="UnionDepartures"
           component={UnionDeparturesScreen}

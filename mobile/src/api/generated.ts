@@ -16,6 +16,9 @@ export type LineScheduleTrip = { "number": string; "display": string; "stops"?: 
 export type LineStopsResponse = { "date": string; "line_code": string; "direction": string; "display": string; "stops"?: Array<LineRouteStop>; };
 export type LineSummary = { "code": string; "name": string; "vehicle_types"?: Array<string>; "directions"?: Array<string>; "variants"?: Array<Variant>; };
 export type LinesAllResponse = { "date": string; "lines"?: Array<LineSummary>; };
+export type MapLine = { "code": string; "name": string; "color": string; "vehicle_type": string; "shapes"?: Array<Array<Array<number>>>; };
+export type MapStop = { "id": string; "name": string; "type": string; "latitude": number; "longitude": number; "line_codes"?: Array<string>; };
+export type NetworkMap = { "source"?: string; "feed_version"?: (string | null); "valid_from"?: (string | null); "valid_until"?: (string | null); "stale"?: boolean; "stops": Array<MapStop>; "lines": Array<MapLine>; };
 export type NextService = { "stop_code": string; "lines": Array<NextServiceLine>; };
 export type NextServiceLine = { "line_code": string; "line_name": string; "service_type": string; "direction_name": string; "scheduled_departure_time": string; "computed_departure_time"?: (string | null); "departure_status"?: (string | null); "platform_number"?: (string | null); "trip_order"?: (number | null); "trip_number"?: (string | null); "update_time"?: (string | null); "status": string; "latitude"?: (number | null); "longitude"?: (number | null); };
 export type ServiceAtGlanceResponse = { "mode": string; "total_trips"?: number; "in_motion_trips"?: number; "early_trips"?: number; "on_time_trips"?: number; "delayed_trips"?: number; "trips"?: Array<ServiceTrip>; };
@@ -44,6 +47,7 @@ export interface GetResponses {
   "/api/alerts/service": Array<Alert>;
   "/api/fares/{from_stop}/{to_stop}": FaresResponse;
   "/api/journeys/{from_stop}/{to_stop}/{journey_date}/{start_time}": JourneyResponse;
+  "/api/map/network": NetworkMap;
   "/api/schedules/lines": LinesAllResponse;
   "/api/schedules/lines/{line_code}/{direction}": LineScheduleResponse;
   "/api/schedules/lines/{line_code}/{direction}/stops": LineStopsResponse;

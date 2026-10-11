@@ -11,6 +11,8 @@ function query(values: Record<string, string | number | undefined>): string {
 }
 
 export const transitApi = {
+  networkMap: (signal?: AbortSignal) =>
+    request<GetResponses['/api/map/network']>('/api/map/network', signal, 45000),
   health: (signal?: AbortSignal) => request<GetResponses['/health']>('/health', signal),
   stops: (signal?: AbortSignal) => request<GetResponses['/api/stops']>('/api/stops', signal),
   stopDetails: (stop: string, signal?: AbortSignal) =>

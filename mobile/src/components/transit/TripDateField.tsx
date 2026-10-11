@@ -1,5 +1,6 @@
+import { MotionPressable } from '../ui/MotionPressable';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { torontoDateTime } from '../../utils/transit';
 import { isPastDate, canGoToPreviousMonth } from '../../utils/calendar';
 import { Icon } from '../ui/Icon';
@@ -68,7 +69,7 @@ export function TripDateField({
   return (
     <View style={styles.container}>
       <View style={styles.row}>
-        <Pressable
+        <MotionPressable
           accessibilityRole="button"
           accessibilityLabel="Choose travel date"
           accessibilityState={{ expanded }}
@@ -86,15 +87,15 @@ export function TripDateField({
                 })}
           </Text>
           <Icon name={expanded ? 'chevron-up' : 'chevron-down'} size={16} />
-        </Pressable>
-        <Pressable
+        </MotionPressable>
+        <MotionPressable
           accessibilityRole="button"
           accessibilityLabel="Select today"
           style={styles.todayButton}
           onPress={() => selectDate(today)}
         >
           <Text style={styles.todayLabel}>Today</Text>
-        </Pressable>
+        </MotionPressable>
       </View>
       {expanded && (
         <View style={styles.calendar}>
@@ -122,7 +123,7 @@ export function TripDateField({
             ))}
             {cells.map((day, index) =>
               day ? (
-                <Pressable
+                <MotionPressable
                   key={index}
                   accessibilityRole="button"
                   accessibilityLabel={day.toLocaleDateString('en-CA', {
@@ -150,7 +151,7 @@ export function TripDateField({
                       {day.getDate()}
                     </Text>
                   </View>
-                </Pressable>
+                </MotionPressable>
               ) : (
                 <View key={index} style={styles.day} />
               ),

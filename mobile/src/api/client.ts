@@ -32,7 +32,11 @@ export function getApiUrl(): string {
   }
 }
 
-export async function request<T>(path: string, signal?: AbortSignal): Promise<T> {
+export async function request<T>(
+  path: string,
+  signal?: AbortSignal,
+  timeoutMs = 15000,
+): Promise<T> {
   const base = getApiUrl();
   const controller = new AbortController();
   let timedOut = false;
@@ -42,7 +46,7 @@ export async function request<T>(path: string, signal?: AbortSignal): Promise<T>
   const timeout = setTimeout(() => {
     timedOut = true;
     controller.abort();
-  }, 15000);
+  }, timeoutMs);
   try {
     const response = await fetch(`${base}${path}`, {
       headers: { Accept: 'application/json' },

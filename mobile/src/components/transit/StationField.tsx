@@ -1,4 +1,5 @@
-import { Pressable, Text, View } from 'react-native';
+import { MotionPressable } from '../ui/MotionPressable';
+import { Text, View } from 'react-native';
 import { Icon } from '../ui/Icon';
 import { IconButton } from '../ui/IconButton';
 import { styles } from './StationField.styles';
@@ -16,7 +17,7 @@ export function StationField({
 }) {
   return (
     <View style={styles.field}>
-      <Pressable
+      <MotionPressable
         accessibilityRole="button"
         accessibilityLabel={`Choose ${kind} station`}
         style={styles.selection}
@@ -27,7 +28,7 @@ export function StationField({
           {name || (kind === 'origin' ? 'From station' : 'To station')}
         </Text>
         <Icon name="chevron-down" size={16} />
-      </Pressable>
+      </MotionPressable>
       {!!name && <IconButton name="x" label={`Clear ${kind} station`} onPress={onClear} />}
     </View>
   );

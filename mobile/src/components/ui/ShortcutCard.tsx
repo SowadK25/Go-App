@@ -1,4 +1,5 @@
-import { Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { MotionPressable } from './MotionPressable';
 import { Icon, type IconName } from './Icon';
 import { styles } from './ShortcutCard.styles';
 
@@ -18,7 +19,7 @@ export function ShortcutCard({
   showChevron?: boolean;
 }) {
   return (
-    <Pressable
+    <MotionPressable
       accessibilityRole="button"
       accessibilityLabel={title}
       onPress={onPress}
@@ -32,6 +33,6 @@ export function ShortcutCard({
         <Text style={styles.subtitle}>{subtitle}</Text>
       </View>
       {showChevron && <Icon name="chevron-right" size={18} />}
-    </Pressable>
+    </MotionPressable>
   );
 }

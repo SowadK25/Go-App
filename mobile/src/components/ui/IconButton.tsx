@@ -1,4 +1,4 @@
-import { Pressable } from 'react-native';
+import { MotionPressable } from './MotionPressable';
 import { Icon, type IconName } from './Icon';
 import { styles } from './ui.styles';
 import { colors } from '../../theme/tokens';
@@ -18,7 +18,7 @@ export function IconButton({
   selected?: boolean;
 }) {
   return (
-    <Pressable
+    <MotionPressable
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled, selected }}
@@ -32,6 +32,6 @@ export function IconButton({
       ]}
     >
       <Icon name={name} color={color} />
-    </Pressable>
+    </MotionPressable>
   );
 }

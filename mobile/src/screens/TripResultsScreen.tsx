@@ -59,15 +59,16 @@ export function TripResultsScreen({
     <Screen
       header={false}
       refreshControl={
-        tab === 'trips' ? (
-          <RefreshControl
-            refreshing={journeys.isRefetching || statuses.refreshing}
-            onRefresh={() => {
-              void journeys.refetch();
-              void statuses.refresh();
-            }}
-          />
-        ) : undefined
+        // Removing this wrapper remounts Android's ScrollView and resets the tab animation.
+        <RefreshControl
+          enabled={tab === 'trips'}
+          refreshing={tab === 'trips' && (journeys.isRefetching || statuses.refreshing)}
+          onRefresh={() => {
+            if (tab !== 'trips') return;
+            void journeys.refetch();
+            void statuses.refresh();
+          }}
+        />
       }
     >
       <Card>

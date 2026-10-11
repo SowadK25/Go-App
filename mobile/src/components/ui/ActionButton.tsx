@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, Text } from 'react-native';
+import { ActivityIndicator, Text } from 'react-native';
+import { MotionPressable } from './MotionPressable';
 import { Icon, type IconName } from './Icon';
 import { styles } from './ui.styles';
 import { colors } from '../../theme/tokens';
@@ -18,7 +19,7 @@ export function ActionButton({
   loading?: boolean;
 }) {
   return (
-    <Pressable
+    <MotionPressable
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityState={{ disabled: disabled || loading, busy: loading }}
@@ -37,6 +38,6 @@ export function ActionButton({
         icon && <Icon name={icon} size={17} color={secondary ? colors.primary : colors.surface} />
       )}
       <Text style={[styles.actionText, secondary && styles.secondaryText]}>{title}</Text>
-    </Pressable>
+    </MotionPressable>
   );
 }

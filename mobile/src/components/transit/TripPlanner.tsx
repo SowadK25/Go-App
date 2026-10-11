@@ -1,5 +1,6 @@
+import { MotionPressable } from '../ui/MotionPressable';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParams } from '../../navigation/types';
@@ -50,7 +51,7 @@ export function TripPlanner() {
       <View style={styles.planner}>
         <SectionHeading title="Plan Your Trip" />
         <View style={styles.row}>
-          <Pressable
+          <MotionPressable
             accessibilityRole="button"
             accessibilityLabel="Plan home to work"
             style={styles.commute}
@@ -66,8 +67,8 @@ export function TripPlanner() {
                 {work?.name ?? 'Set your stations'}
               </Text>
             </View>
-          </Pressable>
-          <Pressable
+          </MotionPressable>
+          <MotionPressable
             accessibilityRole="button"
             accessibilityLabel="Plan work to home"
             style={styles.commute}
@@ -83,7 +84,7 @@ export function TripPlanner() {
                 {home?.name ?? 'Set your stations'}
               </Text>
             </View>
-          </Pressable>
+          </MotionPressable>
         </View>
         <View style={styles.fields}>
           <View style={styles.stationFields}>
