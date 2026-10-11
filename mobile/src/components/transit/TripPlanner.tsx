@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { Platform, Pressable, Text, View } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { Pressable, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParams } from '../../navigation/types';
 import type { Stop } from '../../api/generated';
 import { usePreferences } from '../../storage/PreferencesProvider';
-import { torontoDateTime, clockTime, easternTimeLabel } from '../../utils/transit';
+import { initialSearchDate, searchDateTime } from '../../utils/tripSearch';
 import { Card } from '../ui/Card';
 import { SectionHeading } from '../ui/SectionHeading';
 import { Icon } from '../ui/Icon';
@@ -14,28 +13,19 @@ import { IconButton } from '../ui/IconButton';
 import { ActionButton } from '../ui/ActionButton';
 import { StationPicker } from './StationPicker';
 import { StationField } from './StationField';
-import { TripDateField } from './TripDateField';
+import { TripDateTimeFields } from './TripDateTimeFields';
+import { SegmentedTabs } from '../ui/SegmentedTabs';
+import type { JourneySearchMode } from '../../utils/journeys';
 import { styles } from './transit.styles';
 type SelectedStop = Pick<Stop, 'id' | 'name' | 'type'>;
-function initialDate() {
-  const now = torontoDateTime();
-  return new Date(
-    Number(now.date.slice(0, 4)),
-    Number(now.date.slice(4, 6)) - 1,
-    Number(now.date.slice(6, 8)),
-    Number(now.time.slice(0, 2)),
-    Number(now.time.slice(2)),
-  );
-}
 export function TripPlanner() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParams>>();
-  const { home, work, ready } = usePreferences();
+  const { home, work, ready, storageError } = usePreferences();
   const [from, setFrom] = useState<SelectedStop | null>(null);
   const [to, setTo] = useState<SelectedStop | null>(null);
-  const [date, setDate] = useState(initialDate);
+  const [date, setDate] = useState(initialSearchDate);
+  const [searchMode, setSearchMode] = useState<JourneySearchMode>('depart_at');
   const [picker, setPicker] = useState<'from' | 'to' | null>(null);
-  const [showTimePicker, setShowTimePicker] = useState(false);
-  const pad = (value: number) => String(value).padStart(2, '0');
   const selectCommute = (reverse = false) => {
     if (!home || !work) {
       navigation.navigate('Preferences');
@@ -51,8 +41,8 @@ export function TripPlanner() {
       fromName: from.name,
       toCode: to.id,
       toName: to.name,
-      date: `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}`,
-      time: `${pad(date.getHours())}${pad(date.getMinutes())}`,
+      ...searchDateTime(date),
+      searchMode,
     });
   };
   return (
@@ -95,13 +85,6 @@ export function TripPlanner() {
             </View>
           </Pressable>
         </View>
-        <Pressable
-          style={styles.editCommute}
-          accessibilityRole="button"
-          onPress={() => navigation.navigate('Preferences')}
-        >
-          <Text style={styles.link}>＋ Edit home & work stations</Text>
-        </Pressable>
         <View style={styles.fields}>
           <View style={styles.stationFields}>
             <StationField
@@ -128,33 +111,19 @@ export function TripPlanner() {
             />
           </View>
         </View>
-        <TripDateField value={date} onChange={setDate} />
-        <Pressable
-          accessibilityRole="button"
-          style={styles.field}
-          onPress={() => setShowTimePicker(true)}
-        >
-          <Icon name="clock" size={16} />
-          <Text style={styles.fieldText}>
-            {clockTime(date.getHours(), date.getMinutes())} {easternTimeLabel(date)}
-          </Text>
-        </Pressable>
-        {showTimePicker && (
-          <DateTimePicker
-            value={date}
-            mode="time"
-            is24Hour={false}
-            locale={Platform.OS === 'ios' ? 'en-US' : undefined}
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={(_event, selected) => {
-              if (Platform.OS !== 'ios') setShowTimePicker(false);
-              if (selected) setDate(selected);
-            }}
-          />
-        )}
-        {showTimePicker && Platform.OS === 'ios' && (
-          <ActionButton title="Done" secondary onPress={() => setShowTimePicker(false)} />
-        )}
+        <SegmentedTabs
+          options={[
+            { value: 'depart_at', label: 'Depart at' },
+            { value: 'arrive_by', label: 'Arrive by' },
+          ]}
+          value={searchMode}
+          onChange={setSearchMode}
+        />
+        <TripDateTimeFields
+          value={date}
+          onChange={setDate}
+          timeLabel={searchMode === 'arrive_by' ? 'Choose arrival time' : 'Choose departure time'}
+        />
         {from && to && from.id === to.id && (
           <Text style={styles.note}>Choose two different stations.</Text>
         )}
@@ -164,6 +133,7 @@ export function TripPlanner() {
           disabled={!from || !to || from.id === to.id}
           onPress={search}
         />
+        {!!storageError && <Text style={styles.note}>{storageError}</Text>}
       </View>
       <StationPicker
         visible={picker !== null}

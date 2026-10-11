@@ -7,27 +7,29 @@ import {
   useState,
   type PropsWithChildren,
 } from 'react';
-import type { Stop } from '../api/generated';
-type SavedStop = Pick<Stop, 'id' | 'name' | 'type'>;
-type Preferences = { favorites: SavedStop[]; home: SavedStop | null; work: SavedStop | null };
+import {
+  isTrackedTrip,
+  readPreferences,
+  trackingExpired,
+  type SavedStop,
+  type TrackedTrip,
+  type Preferences,
+} from './preferences';
 type PreferencesContextValue = Preferences & {
   ready: boolean;
   storageError: string | null;
   toggleFavorite: (stop: SavedStop) => void;
   setCommuteStop: (kind: 'home' | 'work', stop: SavedStop | null) => void;
+  trackTrip: (trip: TrackedTrip | null) => void;
 };
-const empty: Preferences = { favorites: [], home: null, work: null };
+const empty: Preferences = {
+  favorites: [],
+  home: null,
+  work: null,
+  trackedTrip: null,
+};
 const storageKey = 'transitflow.preferences.v1';
 const PreferencesContext = createContext<PreferencesContextValue | null>(null);
-const isStop = (value: unknown): value is SavedStop =>
-  !!value &&
-  typeof value === 'object' &&
-  'id' in value &&
-  typeof value.id === 'string' &&
-  'name' in value &&
-  typeof value.name === 'string' &&
-  'type' in value &&
-  typeof value.type === 'string';
 export function PreferencesProvider({ children }: PropsWithChildren) {
   const [preferences, setPreferences] = useState<Preferences>(empty);
   const [ready, setReady] = useState(false);
@@ -39,15 +41,10 @@ export function PreferencesProvider({ children }: PropsWithChildren) {
     AsyncStorage.getItem(storageKey)
       .then((raw) => {
         if (!raw || !active) return;
-        const value = JSON.parse(raw) as Partial<Preferences>;
-        setPreferences({
-          favorites: Array.isArray(value.favorites) ? value.favorites.filter(isStop) : [],
-          home: isStop(value.home) ? value.home : null,
-          work: isStop(value.work) ? value.work : null,
-        });
+        setPreferences(readPreferences(JSON.parse(raw)));
       })
       .catch(() => {
-        if (active) setStorageError('Saved stations could not be loaded.');
+        if (active) setStorageError('Stations and tracked trip could not be loaded.');
       })
       .finally(() => {
         if (active) setReady(true);
@@ -80,9 +77,21 @@ export function PreferencesProvider({ children }: PropsWithChildren) {
     setPreferences((current) => ({ ...current, [kind]: stop }));
     setRevision((current) => current + 1);
   };
+  const trackTrip = (trip: TrackedTrip | null) => {
+    if (!ready || (trip && (!isTrackedTrip(trip) || trackingExpired(trip)))) return;
+    setPreferences((current) => ({ ...current, trackedTrip: trip }));
+    setRevision((current) => current + 1);
+  };
   return (
     <PreferencesContext.Provider
-      value={{ ...preferences, ready, storageError, toggleFavorite, setCommuteStop }}
+      value={{
+        ...preferences,
+        ready,
+        storageError,
+        toggleFavorite,
+        setCommuteStop,
+        trackTrip,
+      }}
     >
       {children}
     </PreferencesContext.Provider>

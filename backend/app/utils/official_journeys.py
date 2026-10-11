@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from app.models.journeys import JourneyResponse, JourneyService, JourneyTrip, JourneyStop
 
@@ -59,3 +60,21 @@ def select_journeys(response: JourneyResponse, maximum: int) -> list[JourneyServ
         )
         unique.setdefault(identity, journey)
     return sorted(unique.values(), key=lambda journey: (journey.start_time, journey.end_time))[:maximum]
+
+
+def select_arrive_by(journeys: list[JourneyService], date: str, time: str, maximum: int, now: datetime | None = None) -> list[JourneyService]:
+    """Choose upcoming departures arriving one hour before to 30 minutes after the target."""
+    deadline = _at_time(datetime.strptime(date, "%Y%m%d"), f"{time[:2]}:{time[2:]}")
+    earliest = deadline - timedelta(hours=1)
+    latest = deadline + timedelta(minutes=30)
+    current = now if now is not None else datetime.now(ZoneInfo("America/Toronto"))
+    if current.tzinfo is not None:
+        current = current.astimezone(ZoneInfo("America/Toronto")).replace(tzinfo=None)
+    eligible = [journey for journey in journeys
+                if earliest <= datetime.fromisoformat(journey.end_time) <= latest
+                and datetime.fromisoformat(journey.start_time) >= current]
+    response = JourneyResponse(from_stop="", to_stop="", date=date, start_time=time, journeys=eligible)
+    unique = select_journeys(response, len(eligible))
+    # Stable ordering gives the earlier arrival priority for identical departure times.
+    unique.sort(key=lambda journey: journey.end_time)
+    return sorted(unique, key=lambda journey: journey.start_time, reverse=True)[:maximum]

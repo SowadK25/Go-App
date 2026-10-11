@@ -8,14 +8,15 @@ export function useStops() {
     staleTime: 86400000,
   });
 }
-export function useAlerts(stopCode?: string) {
+export function useAlerts(stopCode?: string, enabled = true) {
   const focused = useIsFocused();
   return useQuery({
     queryKey: ['alerts', stopCode ?? 'all'],
     queryFn: ({ signal }) => transitApi.alerts({ stop_code: stopCode }, signal),
     staleTime: 60000,
     refetchInterval: 60000,
-    subscribed: focused,
+    enabled: enabled && focused,
+    subscribed: enabled && focused,
   });
 }
 export function useLines() {

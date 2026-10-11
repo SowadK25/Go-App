@@ -73,7 +73,6 @@ export const styles = StyleSheet.create({
   },
   commuteLabel: { fontSize: 11, color: colors.text, fontWeight: '600' },
   commuteStation: { fontSize: 10, color: colors.muted, marginTop: 2 },
-  editCommute: { alignSelf: 'center', padding: 4 },
   link: { fontSize: 12, color: colors.primary, fontWeight: '600' },
   input: { flex: 1, fontSize: 14, color: colors.text, paddingVertical: 4 },
   search: {

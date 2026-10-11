@@ -16,11 +16,19 @@ import { LineBadge } from '../components/ui/LineBadge';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { StopTimeline } from '../components/transit/StopTimeline';
 import { styles } from './screens.styles';
+import { ActionButton } from '../components/ui/ActionButton';
+import { usePreferences } from '../storage/PreferencesProvider';
+import { trackingExpired, trackedTripKey } from '../storage/preferences';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 export function JourneyDetailsScreen({
   route,
 }: NativeStackScreenProps<RootStackParams, 'JourneyDetails'>) {
   const { journey, fromName, toName, date } = route.params;
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParams>>();
+  const { trackedTrip, trackTrip, ready, storageError } = usePreferences();
+  const tracking = !!trackedTrip && trackedTripKey(trackedTrip) === trackedTripKey(route.params);
   const stops = useStops();
   const stopName = (code: string) => stops.data?.find((stop) => stop.id === code)?.name ?? code;
   const transfers = transferCount(journey);
@@ -66,6 +74,24 @@ export function JourneyDetailsScreen({
         <Text style={styles.subtitle}>
           Updated stop predictions appear beside the scheduled time when available.
         </Text>
+        {!!journey.trips?.length && !trackingExpired(route.params) && (
+          <ActionButton
+            title={tracking ? 'Stop tracking trip' : 'Track trip'}
+            icon="navigation"
+            secondary
+            disabled={!ready}
+            onPress={() => {
+              trackTrip(tracking ? null : route.params);
+              if (!tracking) navigation.popTo('Main', { screen: 'Home' });
+            }}
+          />
+        )}
+        {!tracking && !!trackedTrip && (
+          <Text style={styles.subtitle}>
+            Tracking this trip will replace your current tracked trip.
+          </Text>
+        )}
+        {!!storageError && <Text style={styles.subtitle}>{storageError}</Text>}
       </Card>
       {!journey.trips?.length && (
         <Card>

@@ -1,5 +1,6 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { JourneyService, JourneyStop } from '../api/generated';
+import type { JourneySearchMode } from '../utils/journeys';
 
 export type MainTabParams = {
   Home: undefined;
@@ -17,10 +18,11 @@ export type RootStackParams = {
     toName: string;
     date: string;
     time: string;
+    searchMode?: JourneySearchMode;
   };
   Preferences: undefined;
   JourneyDetails: { journey: JourneyService; fromName: string; toName: string; date: string };
-  Alerts: undefined;
+  Alerts: { lineCodes?: string[] } | undefined;
   UnionDepartures: undefined;
   ScheduleTripDetails: {
     tripNumber: string;

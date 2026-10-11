@@ -19,6 +19,8 @@ export function JourneyCard({
   legStatuses,
   departure,
   arrival,
+  departureDateLabel,
+  arrivalTargetMinutesLate,
 }: {
   journey: JourneyService;
   stopName: (code: string) => string;
@@ -27,6 +29,8 @@ export function JourneyCard({
   legStatuses: LiveTripStatus[];
   departure: PredictedTime;
   arrival: PredictedTime;
+  departureDateLabel?: string;
+  arrivalTargetMinutesLate?: number;
 }) {
   const transfers = transferCount(journey);
   return (
@@ -37,12 +41,19 @@ export function JourneyCard({
         onPress={onPress}
         style={({ pressed }) => [styles.content, pressed && styles.pressed]}
       >
+        {!!departureDateLabel && <Text style={styles.subtitle}>Departs {departureDateLabel}</Text>}
         <View style={styles.timeRow}>
           <JourneyTimes departure={departure} arrival={arrival} />
           <Icon name="chevron-right" size={18} />
         </View>
         <View style={styles.badges}>
           <StatusBadge label={status.label} tone={status.tone} />
+          {!!arrivalTargetMinutesLate && (
+            <StatusBadge
+              label={`Arrives ${arrivalTargetMinutesLate} min after target`}
+              tone="warning"
+            />
+          )}
           {journey.duration && (
             <StatusBadge
               label={`${journeyDuration(journey.duration)}${departure.estimated || arrival.estimated ? ' scheduled' : ''}`}

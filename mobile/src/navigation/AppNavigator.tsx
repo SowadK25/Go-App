@@ -1,5 +1,8 @@
 import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import {
+  createNativeStackNavigator,
+  type NativeStackScreenProps,
+} from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Icon, type IconName } from '../components/ui/Icon';
 import { HomeScreen } from '../screens/HomeScreen';
@@ -22,8 +25,8 @@ const icons: Record<keyof MainTabParams, IconName> = {
   Schedules: 'clock',
   AlertsTab: 'bell',
 };
-function AlertDetails() {
-  return <AlertsScreen header={false} />;
+function AlertDetails({ route }: NativeStackScreenProps<RootStackParams, 'Alerts'>) {
+  return <AlertsScreen header={false} initialLineCodes={route.params?.lineCodes} />;
 }
 function MainTabs() {
   return (

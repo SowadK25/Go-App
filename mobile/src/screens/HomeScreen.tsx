@@ -6,6 +6,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParams } from '../navigation/types';
 import { Screen } from '../components/layout/Screen';
 import { TripPlanner } from '../components/transit/TripPlanner';
+import { TrackedTripCard } from '../components/transit/TrackedTripCard';
 import { NetworkStatus } from '../components/transit/NetworkStatus';
 import { ServiceAlertSummary } from '../components/transit/ServiceAlertSummary';
 import { ShortcutCard } from '../components/ui/ShortcutCard';
@@ -20,7 +21,9 @@ export function HomeScreen() {
     setRefreshing(true);
     try {
       await Promise.all(
-        ['alerts', 'lines'].map((key) => queryClient.invalidateQueries({ queryKey: [key] })),
+        ['alerts', 'lines', 'liveService', 'liveExceptions', 'tripSchedule'].map((key) =>
+          queryClient.invalidateQueries({ queryKey: [key] }),
+        ),
       );
     } finally {
       setRefreshing(false);
@@ -51,6 +54,7 @@ export function HomeScreen() {
         <Text style={styles.heroTitle}>Where Would You{'\n'}Like to GO?</Text>
       </LinearGradient>
       <View style={styles.body}>
+        <TrackedTripCard />
         <TripPlanner />
         <View style={styles.quickActions}>
           <ShortcutCard

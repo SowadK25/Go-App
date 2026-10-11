@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, Text, View } from 'react-native';
 import type { LineSummary } from '../api/generated';
 import { useAlerts, useLines } from '../hooks/transitQueries';
@@ -19,10 +19,20 @@ import { LinePicker } from '../components/transit/LinePicker';
 import { Icon } from '../components/ui/Icon';
 import { ActionButton } from '../components/ui/ActionButton';
 import { styles as lineStyles } from '../components/transit/LinePicker.styles';
-export function AlertsScreen({ header = true }: { header?: boolean }) {
+import { filterAlertsByLines } from '../utils/alerts';
+export function AlertsScreen({
+  header = true,
+  initialLineCodes,
+}: {
+  header?: boolean;
+  initialLineCodes?: string[];
+}) {
   const alerts = useAlerts();
   const lines = useLines();
-  const [selectedLine, setSelectedLine] = useState<LineSummary | null>(null);
+  const [selectedCodes, setSelectedCodes] = useState<string[]>(initialLineCodes ?? []);
+  useEffect(() => {
+    setSelectedCodes(initialLineCodes ?? []);
+  }, [initialLineCodes]);
   const [showLinePicker, setShowLinePicker] = useState(false);
   const allNotices = useMemo(
     () => [...(alerts.data?.service_alerts ?? []), ...(alerts.data?.information_alerts ?? [])],
@@ -51,13 +61,20 @@ export function AlertsScreen({ header = true }: { header?: boolean }) {
       }
     return [...catalog.values()];
   }, [lines.data, allNotices]);
-  const notices = selectedLine
-    ? allNotices.filter((alert) =>
-        alert.affected_lines?.some(
-          (code) => canonicalLineCode(code) === canonicalLineCode(selectedLine.code),
-        ),
-      )
-    : allNotices;
+  const notices = filterAlertsByLines(allNotices, selectedCodes);
+  const selectedLine =
+    selectedCodes.length === 1
+      ? lineOptions.find(
+          (line) => canonicalLineCode(line.code) === canonicalLineCode(selectedCodes[0]),
+        )
+      : undefined;
+  const filterName =
+    selectedCodes.length > 1
+      ? 'Tracked trip lines'
+      : (selectedLine?.name ??
+        (selectedCodes.length
+          ? (lineInfo(selectedCodes[0])?.name ?? `Line ${selectedCodes[0]}`)
+          : 'All Lines'));
   return (
     <Screen
       header={header}
@@ -81,29 +98,37 @@ export function AlertsScreen({ header = true }: { header?: boolean }) {
           style={lineStyles.trigger}
           onPress={() => setShowLinePicker(true)}
         >
-          {selectedLine ? <LineBadge code={selectedLine.code} /> : <Icon name="filter" />}
+          {selectedCodes.length ? (
+            <View style={styles.wrap}>
+              {selectedCodes.map((code) => (
+                <LineBadge key={code} code={code} />
+              ))}
+            </View>
+          ) : (
+            <Icon name="filter" />
+          )}
           <View style={lineStyles.details}>
-            <Text style={lineStyles.name}>{selectedLine?.name ?? 'All Lines'}</Text>
+            <Text style={lineStyles.name}>{filterName}</Text>
             <Text style={lineStyles.mode}>Choose a train or bus line</Text>
           </View>
           <Icon name="chevron-down" size={18} />
         </Pressable>
-        {selectedLine && (
-          <ActionButton title="Show All Lines" secondary onPress={() => setSelectedLine(null)} />
+        {selectedCodes.length > 0 && (
+          <ActionButton title="Show All Lines" secondary onPress={() => setSelectedCodes([])} />
         )}
         {alerts.data && (
           <Text style={styles.subtitle}>
             {notices.length} update{notices.length === 1 ? '' : 's'}
-            {selectedLine ? ` for ${selectedLine.name}` : ' across all lines'}
+            {selectedCodes.length ? ` for ${filterName}` : ' across all lines'}
           </Text>
         )}
       </Card>
       <LinePicker
         lines={lineOptions}
-        selectedCode={selectedLine?.code}
+        selectedCode={selectedCodes.length === 1 ? selectedCodes[0] : undefined}
         visible={showLinePicker}
         onClose={() => setShowLinePicker(false)}
-        onSelect={setSelectedLine}
+        onSelect={(line) => setSelectedCodes([line.code])}
         availabilityLabel="to filter"
       />
       {alerts.isError && (
@@ -126,8 +151,8 @@ export function AlertsScreen({ header = true }: { header?: boolean }) {
                 ? 'Checking service updates...'
                 : alerts.isError
                   ? 'Updates unavailable.'
-                  : selectedLine
-                    ? `No service or information alerts were reported for ${selectedLine.name}.`
+                  : selectedCodes.length
+                    ? `No service or information alerts were reported for ${filterName}.`
                     : 'No service or information alerts were reported.'
             }
           />

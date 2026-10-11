@@ -1,5 +1,6 @@
 import { request } from './client';
 import type { GetResponses } from './generated';
+import type { JourneySearchMode } from '../utils/journeys';
 
 const code = encodeURIComponent;
 function query(values: Record<string, string | number | undefined>): string {
@@ -29,9 +30,10 @@ export const transitApi = {
     time: string,
     maxJourneys = 5,
     signal?: AbortSignal,
+    searchMode: JourneySearchMode = 'depart_at',
   ) =>
     request<GetResponses['/api/journeys/{from_stop}/{to_stop}/{journey_date}/{start_time}']>(
-      `/api/journeys/${code(from)}/${code(to)}/${code(date)}/${code(time)}${query({ max_journeys: maxJourneys })}`,
+      `/api/journeys/${code(from)}/${code(to)}/${code(date)}/${code(time)}${query({ max_journeys: maxJourneys, search_mode: searchMode })}`,
       signal,
     ),
   fares: (from: string, to: string, date?: string, signal?: AbortSignal) =>

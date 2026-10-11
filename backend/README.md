@@ -6,6 +6,8 @@ Journey searches use the official GO website's public timetable as the primary s
 
 Longer mixed-mode journeys remain available. For Open Data fallback results, the backend only removes slower same-line, same-station train changes when the same boarding service has a direct trip arriving no later.
 
+Journey requests accept `search_mode=depart_at` (default) or `search_mode=arrive_by`. In arrival mode, the path date/time is the desired arrival target. The backend reads the official timetable for that date and the previous date concurrently, plus the following date when the window crosses forward past midnight, filters out departures before the current Toronto time, and includes scheduled arrivals from one hour before the target through 30 minutes after it (inclusive). The window can cross midnight. Results are deduplicated and returned with the latest departures first. A same-departure tie prefers the earlier arrival. Filtering happens before the requested result limit and is recalculated even when timetables are cached. Both timetables use the existing five-minute cache. If either timetable fails or is invalid, arrival search returns 503 with a suggestion to try Depart at; the forward-only Open Data fallback cannot provide a complete arrival search.
+
 ## Prerequisites
 
 - Python 3.11 (the version used to verify this setup).
