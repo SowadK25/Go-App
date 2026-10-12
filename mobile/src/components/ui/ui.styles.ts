@@ -70,19 +70,9 @@ export const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     gap: 8,
   },
-  brand: { flex: 1, flexDirection: 'row', gap: 8, alignItems: 'center' },
-  brandMark: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  brandSymbol: { color: colors.primary, fontSize: 29, fontWeight: '800', lineHeight: 34 },
-  brandName: { color: colors.surface, fontSize: 18, fontWeight: '800' },
-  brandSubtitle: { color: colors.surface, fontSize: 10 },
   empty: { padding: 24, gap: 12, alignItems: 'center' },
+  emptyCompact: { paddingHorizontal: 0, paddingVertical: 8, gap: 8, alignItems: 'flex-start' },
+  emptyCompactText: { textAlign: 'left' },
   emptyText: { color: colors.muted, fontSize: 13, textAlign: 'center', lineHeight: 20 },
 });
 export const badgeColor = (color: string) => ({ backgroundColor: color });

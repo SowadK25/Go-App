@@ -33,6 +33,7 @@ class LineScheduleTrip(BaseModel):
     """Single trip for a line+direction schedule"""
     number: str
     display: str
+    service_date: Optional[str] = None
     stops: List[LineRouteStop] = Field(default_factory=list)
 
 class LineScheduleResponse(BaseModel):

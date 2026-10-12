@@ -29,6 +29,7 @@ export type RootStackParams = {
     tripNumber: string;
     title: string;
     date: string;
+    displayDate?: string;
     lineCode?: string;
     scheduledStops?: JourneyStop[];
   };

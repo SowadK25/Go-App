@@ -13,4 +13,6 @@ export const styles = StyleSheet.create({
   arrow: { color: colors.muted, fontSize: 13 },
   late: { color: colors.danger },
   early: { color: colors.success },
+  prominent: { fontSize: 20 },
+  prominentTimes: { maxWidth: '100%', justifyContent: 'flex-start' },
 });

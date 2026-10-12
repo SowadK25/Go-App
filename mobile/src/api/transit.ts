@@ -11,6 +11,32 @@ function query(values: Record<string, string | number | undefined>): string {
 }
 
 export const transitApi = {
+  lineCatalog: (signal?: AbortSignal) =>
+    request<GetResponses['/api/map/lines']>('/api/map/lines', signal, 45000),
+  timetableLines: (date: string, signal?: AbortSignal) =>
+    request<GetResponses['/api/map/schedules/lines']>(
+      `/api/map/schedules/lines${query({ schedule_date: date })}`,
+      signal,
+      45000,
+    ),
+  lineTimetable: (line: string, direction: string, date: string, signal?: AbortSignal) =>
+    request<GetResponses['/api/map/schedules/lines/{line_code}/{direction}']>(
+      `/api/map/schedules/lines/${code(line)}/${code(direction)}${query({ schedule_date: date })}`,
+      signal,
+      45000,
+    ),
+  stationDepartures: (stop: string, date: string, signal?: AbortSignal) =>
+    request<GetResponses['/api/stops/{stop_code}/departures']>(
+      `/api/stops/${code(stop)}/departures${query({ schedule_date: date })}`,
+      signal,
+      45000,
+    ),
+  lineStations: (line: string, signal?: AbortSignal) =>
+    request<GetResponses['/api/map/lines/{line_code}/stops']>(
+      `/api/map/lines/${code(line)}/stops`,
+      signal,
+      45000,
+    ),
   networkMap: (signal?: AbortSignal) =>
     request<GetResponses['/api/map/network']>('/api/map/network', signal, 45000),
   health: (signal?: AbortSignal) => request<GetResponses['/health']>('/health', signal),

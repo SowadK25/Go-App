@@ -5,8 +5,8 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { MainTabParams, RootStackParams } from '../navigation/types';
-import { torontoDateTime } from '../utils/transit';
-import { useLines, useStops } from '../hooks/transitQueries';
+import { torontoDateTime, canonicalLineCode } from '../utils/transit';
+import { useStops } from '../hooks/transitQueries';
 import { transitApi } from '../api/transit';
 import { Screen } from '../components/layout/Screen';
 import { Card } from '../components/ui/Card';
@@ -23,7 +23,13 @@ export function SchedulesScreen({
   route,
   navigation,
 }: BottomTabScreenProps<MainTabParams, 'Schedules'>) {
-  const lines = useLines();
+  const date = torontoDateTime().date;
+  const lines = useQuery({
+    queryKey: ['timetableLines', date],
+    queryFn: ({ signal }) => transitApi.timetableLines(date, signal),
+    staleTime: 86400000,
+    retry: false,
+  });
   const rootNavigation = useNavigation<NativeStackNavigationProp<RootStackParams>>();
   const stops = useStops();
   const [lineCode, setLineCode] = useState<string | null>(null);
@@ -36,7 +42,9 @@ export function SchedulesScreen({
     }
   }, [route.params?.lineCode]);
   const selected =
-    lines.data?.lines?.find((line) => line.code === lineCode) ??
+    lines.data?.lines?.find(
+      (line) => canonicalLineCode(line.code) === canonicalLineCode(lineCode ?? ''),
+    ) ??
     (!lineCode
       ? (lines.data?.lines?.find((line) => line.code === 'LW') ?? lines.data?.lines?.[0])
       : undefined);
@@ -44,11 +52,12 @@ export function SchedulesScreen({
     ? direction
     : selected?.directions?.[0];
   const schedule = useQuery({
-    queryKey: ['lineSchedule', selected?.code, activeDirection],
+    queryKey: ['lineTimetable', selected?.code, activeDirection, date],
     enabled: !!selected && !!activeDirection,
     queryFn: ({ signal }) =>
-      transitApi.lineSchedule(selected!.code, activeDirection!, undefined, signal),
-    staleTime: 300000,
+      transitApi.lineTimetable(selected!.code, activeDirection!, date, signal),
+    staleTime: 86400000,
+    retry: false,
   });
   return (
     <Screen
@@ -124,9 +133,7 @@ export function SchedulesScreen({
         <Card padded={false}>
           <View style={styles.resultsHeader}>
             <SectionHeading title={selected.name} />
-            <Text style={styles.subtitle}>
-              Today · {activeDirection ?? 'No direction available'}
-            </Text>
+            <Text style={styles.subtitle}>Today</Text>
           </View>
           {schedule.isError && (
             <RequestState
@@ -158,7 +165,8 @@ export function SchedulesScreen({
                   tripNumber: trip.number,
                   title: trip.display || selected.name,
                   lineCode: selected.code,
-                  date: (schedule.data?.date ?? torontoDateTime().date).replace(/-/g, ''),
+                  date: trip.service_date ?? date,
+                  displayDate: date,
                   scheduledStops: trip.stops?.map((stop) => ({
                     code: stop.code,
                     order: stop.order,

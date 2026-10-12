@@ -48,13 +48,21 @@ The app reads `process.env.EXPO_PUBLIC_API_URL` through Expo's environment varia
 2. Open the project in compatible Expo Go.
 3. Open Stations and confirm stations load. Health checks cache connectivity; stations verify Metrolinx access.
 4. Search for a station and tap it to load departures.
-5. Pull down to refresh. Departures also refresh every 30 seconds while the screen and app are active.
+5. Pull down to refresh. Current-day live predictions also refresh every 60 seconds while the screen and app are active.
 6. Save a favorite, reload the app, and confirm it remains saved.
 7. On Home, choose origin and destination stations, a date and departure time, then search for journeys.
 
 The screens handle empty results, API failures, loading, offline requests, and stale data. Navigation passes the station code and name. No Metrolinx credentials are bundled.
 
 ## API types and checks
+
+Alerts resolves route names through the full published `/api/map/lines` catalog, cached for a day. Bus filters display route numbers with corridor names, and alert cards include named bus badges. This catalog includes routes not operating today, so an off-day service notice still has a useful route name. Unknown routes retain their provider code without an invented name.
+
+Schedules uses `/api/map/schedules/lines` and its line/direction timetable endpoint to include train and bus services operating on the selected calendar day. It shares the GTFS day index with station boards, rather than relying on the Open Data line catalog that can omit buses. Directions and variant descriptions come from published trips; times are ordered by origin departure, and trip details retain the original GTFS service date for overnight services. Existing Open Data schedule endpoints remain available for other consumers.
+
+Opening a station displays every scheduled boarding departure for the selected day, including earlier trips, across all destinations. The date defaults to today and can be changed with the shared calendar. The list is virtualized and ordered by scheduled departure; tap any row for its remaining stops/times. GTFS provides the full timetable even when the live feed is empty. Matching current-day live predictions add updated times and platforms when supplied; they refresh once per minute only while viewing today's board. Future dates do not fetch the live station feed. Timetables cache for a day, and live errors leave the scheduled board available. Overnight trip detail lookups use the underlying service date while displaying the selected calendar date.
+
+The Stations line filters use `/api/map/lines/{code}/stops` for full published line membership, sharing the map's daily GTFS cache. They do not use today's timetable endpoints, which may only list a partial route. All seven train lines remain available in the directory even when no service is scheduled today; actual departure availability is shown on the departure/schedule screens. Catalog names are preferred, with published GTFS station details used when a catalog entry is absent.
 
 Journey cards and each transfer leg show live train/bus status from the service feeds, including delays, early running, and cancellations. The feeds are shared between cards and details, refresh live service data every 60 seconds and cancellation feeds every two minutes while the trip view is active, and pause on Fares or when leaving the screen. Matching uses trip number, line, mode, and the leg's calendar date. Polling is limited to legs within 30 minutes of boarding until 90 minutes after their scheduled arrival, allowing for delays. Far-future and finished trips do not poll. Pull to refresh results or details for a manual update; live queries do not automatically retry failed requests. Future services show Scheduled; missing or stale live records show Status unavailable. Opening a current journey fetches stop-level predictions for its unique trip numbers, refreshing once a minute while visible. Result cards only reuse those cached predictions and do not fetch every result. Real predictions appear as scheduled-to-updated times with red for late and green for early; missing estimates keep the planned time. Arrival and departure predictions are matched to their own events, rather than applying a trip-wide delay to every stop.
 
@@ -93,6 +101,6 @@ Styles belong in `.styles.ts` files; TSX components contain rendering and intera
 
 Shared controls use `MotionPressable` for a subtle scale on press and spring-back on release or cancellation. Action/icon buttons, shortcut cards, filter chips, and planner controls share that behavior. `SegmentedTabs` slides its selection background and snaps to the correct position on layout changes. `MotionProvider` observes the system Reduce Motion setting: reduced motion removes scaling and switches selections instantly while preserving press feedback. Animations use React Native Animated with native transforms on mobile; no additional native dependency is required.
 
-Stations cache for a day; departures become stale after 15 seconds. Failed refreshes preserve existing data with an error message. Requests time out after 15 seconds. Client validation and rate limits are not automatically retried. Transit query cache is in memory; favorites and home/work stations persist locally using AsyncStorage.
+Stations and day timetables cache for a day; station live predictions become stale after 60 seconds. Failed refreshes preserve existing data with an error message. Requests time out after 15 seconds. Client validation and rate limits are not automatically retried. Transit query cache is in memory; favorites and home/work stations persist locally using AsyncStorage.
 
 This setup targets native Android and iOS. Web dependencies are installed for browser layout previews. Direct browser access to the backend still requires CORS configuration, and the date/time picker targets native devices.

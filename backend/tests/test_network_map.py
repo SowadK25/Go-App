@@ -69,6 +69,15 @@ class NetworkMapTests(unittest.TestCase):
         self.assertEqual(response.status_code, 503)
         self.assertNotIn("secret-url", response.text)
 
+    def test_station_directory_uses_full_membership_and_accepts_gt_alias(self):
+        network = parse_gtfs_map(sample_gtfs())
+        with patch.object(network_map.client, "get_network", new_callable=AsyncMock, return_value=network):
+            for code in ["KI", "GT"]:
+                response = TestClient(app).get(f"/api/map/lines/{code}/stops")
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual({stop["id"] for stop in response.json()}, {"KI", "UN"})
+            self.assertEqual(TestClient(app).get("/api/map/lines/unknown/stops").status_code, 404)
+
 
 class GtfsCacheTests(unittest.IsolatedAsyncioTestCase):
     async def test_concurrent_requests_download_once_and_keep_last_good_on_failure(self):
@@ -96,6 +105,7 @@ class GtfsCacheTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(calls), 1)
             self.assertEqual(first.stops, second.stops)
             cache.clear()
+            client._feed_updated = float('-inf')
             stale = await client.get_network()
         self.assertTrue(stale.stale)
         self.assertEqual(stale.stops, first.stops)

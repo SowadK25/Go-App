@@ -5,7 +5,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParams } from '../navigation/types';
 import { transitApi } from '../api/transit';
 import { useStops } from '../hooks/transitQueries';
-import { serviceTimestamp, serviceDate } from '../utils/transit';
+import { serviceTimestamp, serviceDate, torontoDateTime } from '../utils/transit';
 import { stopTimes } from '../utils/stopTimes';
 import { StopTime } from '../components/transit/StopTime';
 import { Screen } from '../components/layout/Screen';
@@ -15,11 +15,12 @@ import { SectionHeading } from '../components/ui/SectionHeading';
 import { RequestState } from '../components/RequestState';
 import { StopTimeline } from '../components/transit/StopTimeline';
 import { styles } from './screens.styles';
+import { clipReportedTripStops } from '../utils/stationDepartures';
 
 export function ScheduleTripDetailsScreen({
   route,
 }: NativeStackScreenProps<RootStackParams, 'ScheduleTripDetails'>) {
-  const { tripNumber, title, date, lineCode, scheduledStops = [] } = route.params;
+  const { tripNumber, title, date, displayDate, lineCode, scheduledStops = [] } = route.params;
   const focused = useIsFocused();
   const stations = useStops();
   const stopName = (code: string) => stations.data?.find((stop) => stop.id === code)?.name ?? code;
@@ -27,11 +28,11 @@ export function ScheduleTripDetailsScreen({
     queryKey: ['tripSchedule', tripNumber, date],
     queryFn: ({ signal }) => transitApi.tripSchedule(tripNumber, date, signal),
     staleTime: 60000,
-    refetchInterval: 60000,
+    refetchInterval: date === torontoDateTime().date ? 60000 : false,
     subscribed: focused,
   });
   const trip = details.data?.trips?.find((item) => item.trip_number === tripNumber);
-  const reportedStops = trip?.stops ?? [];
+  const reportedStops = clipReportedTripStops(trip?.stops ?? [], scheduledStops);
   const timeline = reportedStops.length
     ? reportedStops.map((stop, index) => ({
         code: stop.code,
@@ -58,7 +59,7 @@ export function ScheduleTripDetailsScreen({
           <Text style={styles.routeTitle}>{title}</Text>
         </View>
         <Text style={styles.subtitle}>
-          {serviceDate(date)} - Trip {tripNumber}
+          {serviceDate(displayDate ?? date)} - Trip {tripNumber}
         </Text>
         {trip?.timestamp && (
           <Text style={styles.updated}>Updated {serviceTimestamp(trip.timestamp)}</Text>

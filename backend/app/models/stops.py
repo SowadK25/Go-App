@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List
+from app.models.journeys import JourneyStop
 
 class Stop(BaseModel):
     """Stop/Station information"""
@@ -38,3 +39,20 @@ class NextService(BaseModel):
     """Next service information for a stop"""
     stop_code: str
     lines: List[NextServiceLine]
+
+
+class StationDeparture(BaseModel):
+    trip_number: str
+    service_date: str
+    line_code: str
+    line_name: str
+    service_type: str
+    destination: str
+    scheduled_departure_time: str
+    stops: list[JourneyStop] = Field(default_factory=list)
+
+
+class StationDepartures(BaseModel):
+    stop_code: str
+    date: str
+    departures: list[StationDeparture] = Field(default_factory=list)

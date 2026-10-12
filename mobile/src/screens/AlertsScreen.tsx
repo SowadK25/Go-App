@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, Text, View } from 'react-native';
 import type { LineSummary } from '../api/generated';
-import { useAlerts, useLines } from '../hooks/transitQueries';
+import { useAlerts, useLineCatalog } from '../hooks/transitQueries';
 import {
   plainText,
   serviceTimestamp,
@@ -12,6 +12,7 @@ import {
 import { Screen } from '../components/layout/Screen';
 import { Card } from '../components/ui/Card';
 import { LineBadge } from '../components/ui/LineBadge';
+import { NamedLineBadge } from '../components/ui/NamedLineBadge';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { RequestState } from '../components/RequestState';
 import { styles } from './screens.styles';
@@ -28,7 +29,7 @@ export function AlertsScreen({
   initialLineCodes?: string[];
 }) {
   const alerts = useAlerts();
-  const lines = useLines();
+  const lines = useLineCatalog();
   const [selectedCodes, setSelectedCodes] = useState<string[]>(initialLineCodes ?? []);
   useEffect(() => {
     setSelectedCodes(initialLineCodes ?? []);
@@ -40,7 +41,7 @@ export function AlertsScreen({
   );
   const lineOptions = useMemo(() => {
     const catalog = new Map<string, LineSummary>();
-    for (const line of lines.data?.lines ?? []) catalog.set(canonicalLineCode(line.code), line);
+    for (const line of lines.data ?? []) catalog.set(canonicalLineCode(line.code), line);
     // Train lines can have alerts even on days without scheduled service.
     for (const line of railLines)
       if (!catalog.has(line.code))
@@ -165,9 +166,16 @@ export function AlertsScreen({
               label={alert.alert_type}
               tone={alert.alert_type === 'Service' ? 'warning' : 'neutral'}
             />
-            {alert.affected_lines?.map((code) => (
-              <LineBadge key={code} code={code} />
-            ))}
+            {alert.affected_lines?.map((code) => {
+              const line = lineOptions.find(
+                (item) => canonicalLineCode(item.code) === canonicalLineCode(code),
+              );
+              return line?.vehicle_types?.includes('Bus') && line.name !== `Line ${code}` ? (
+                <NamedLineBadge key={code} code={code} name={line.name} />
+              ) : (
+                <LineBadge key={code} code={code} />
+              );
+            })}
           </View>
           <Text style={styles.label}>{plainText(alert.title)}</Text>
           <Text style={styles.alertBody}>{plainText(alert.body)}</Text>

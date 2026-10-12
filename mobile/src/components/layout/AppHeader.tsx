@@ -3,6 +3,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParams } from '../../navigation/types';
 import { IconButton } from '../ui/IconButton';
+import { Brand } from '../ui/Brand';
 import { styles } from '../ui/ui.styles';
 import { colors } from '../../theme/tokens';
 import { usePreferences } from '../../storage/PreferencesProvider';
@@ -36,15 +37,7 @@ export function AppHeader() {
         color={colors.surface}
         onPress={() => navigation.navigate('Preferences')}
       />
-      <View style={styles.brand} accessibilityLabel="GO Transit">
-        <View style={styles.brandMark}>
-          <Text style={styles.brandSymbol}>∞</Text>
-        </View>
-        <View>
-          <Text style={styles.brandName}>GO</Text>
-          <Text style={styles.brandSubtitle}>Transit</Text>
-        </View>
-      </View>
+      <Brand />
       <View style={headerStyles.alertButton}>
         <IconButton
           name="bell"

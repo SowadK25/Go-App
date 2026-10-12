@@ -79,6 +79,13 @@ class MobileFoundationTests(unittest.TestCase):
         with patch.object(service.client, "get_service_trains", new_callable=AsyncMock, return_value={}):
             self.assertEqual(self.client.get("/api/service/trains?trip_number=missing").status_code, 404)
 
+    def test_no_content_station_predictions_are_a_successful_empty_board(self):
+        payload = {"Metadata": {"ErrorCode": "204", "ErrorMessage": "No Content"}, "NextService": None}
+        with patch.object(stops.client, "get_stop_next_service", new_callable=AsyncMock, return_value=payload):
+            response = self.client.get("/api/stops/KI/next-service")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"stop_code": "KI", "lines": []})
+
     def test_stations_and_departures_contract(self):
         # Exercises the HTTP route and real transformers using upstream fixtures.
         station = {"id": "UN", "name": "Union Station", "type": "Train", "public_id": None}

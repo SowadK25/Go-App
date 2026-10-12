@@ -26,3 +26,12 @@ export function useLines() {
     staleTime: 300000,
   });
 }
+
+export function useLineCatalog() {
+  return useQuery({
+    queryKey: ['lineCatalog'],
+    queryFn: ({ signal }) => transitApi.lineCatalog(signal),
+    staleTime: 86400000,
+    retry: false,
+  });
+}

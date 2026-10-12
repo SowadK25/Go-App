@@ -104,7 +104,7 @@ def transform_next_service(raw_data: Dict[str, Any], stop_code: str) -> NextServ
     lines = []
     
     # Structure depends on actual API response
-    line_data = raw_data.get("NextService", {}).get("Lines", [])
+    line_data = (raw_data.get("NextService") or {}).get("Lines", [])
     if not isinstance(line_data, list):
         line_data = [line_data] if line_data else []
     

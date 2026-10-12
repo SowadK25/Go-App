@@ -12,7 +12,7 @@ export type JourneyStop = { "code": string; "order"?: (number | null); "time"?: 
 export type JourneyTrip = { "number": string; "display": string; "line": string; "direction": string; "vehicle_type": string; "depart_from_code": string; "destination_stop_code": string; "stops"?: Array<JourneyStop>; };
 export type LineRouteStop = { "code": string; "order": number; "time"?: (string | null); "name"?: (string | null); "stop_type"?: (string | null); "is_major"?: boolean; };
 export type LineScheduleResponse = { "date": string; "line_code": string; "direction": string; "vehicle_type": string; "trips"?: Array<LineScheduleTrip>; };
-export type LineScheduleTrip = { "number": string; "display": string; "stops"?: Array<LineRouteStop>; };
+export type LineScheduleTrip = { "number": string; "display": string; "service_date"?: (string | null); "stops"?: Array<LineRouteStop>; };
 export type LineStopsResponse = { "date": string; "line_code": string; "direction": string; "display": string; "stops"?: Array<LineRouteStop>; };
 export type LineSummary = { "code": string; "name": string; "vehicle_types"?: Array<string>; "directions"?: Array<string>; "variants"?: Array<Variant>; };
 export type LinesAllResponse = { "date": string; "lines"?: Array<LineSummary>; };
@@ -27,6 +27,8 @@ export type ServiceExceptionStop = { "order"?: (number | null); "code"?: (string
 export type ServiceExceptionTrip = { "trip_number": string; "trip_name"?: (string | null); "is_cancelled"?: boolean; "is_override"?: boolean; "exception_type": string; "affected_stops"?: Array<ServiceExceptionStop>; };
 export type ServiceExceptionsResponse = { "mode": string; "generated_at"?: (string | null); "total_trips"?: number; "cancelled_trips"?: number; "override_trips"?: number; "stop_change_trips"?: number; "trips"?: Array<ServiceExceptionTrip>; };
 export type ServiceTrip = { "trip_number": string; "line_code": string; "route_number"?: (string | null); "direction"?: (string | null); "display": string; "start_time"?: (string | null); "end_time"?: (string | null); "cars"?: (number | null); "latitude"?: (number | null); "longitude"?: (number | null); "is_in_motion"?: boolean; "delay_seconds"?: (number | null); "delay_minutes"?: (number | null); "delay_status"?: (string | null); "course"?: (number | null); "first_stop_code"?: (string | null); "last_stop_code"?: (string | null); "prev_stop_code"?: (string | null); "next_stop_code"?: (string | null); "at_station_code"?: (string | null); "modified_at"?: (string | null); };
+export type StationDeparture = { "trip_number": string; "service_date": string; "line_code": string; "line_name": string; "service_type": string; "destination": string; "scheduled_departure_time": string; "stops"?: Array<JourneyStop>; };
+export type StationDepartures = { "stop_code": string; "date": string; "departures"?: Array<StationDeparture>; };
 export type Stop = { "id": string; "name": string; "type": string; "public_id"?: (string | null); };
 export type StopDetails = { "stop_code": string; "stop_name": string; "zone_code"?: (string | null); "address"?: (string | null); "latitude"?: (number | null); "longitude"?: (number | null); };
 export type TripDetails = { "trip_number": string; "destination": string; "latitude"?: (number | null); "longitude"?: (number | null); "status"?: (string | null); "timestamp"?: (string | null); "stops"?: Array<TripStopDetails>; };
@@ -47,7 +49,11 @@ export interface GetResponses {
   "/api/alerts/service": Array<Alert>;
   "/api/fares/{from_stop}/{to_stop}": FaresResponse;
   "/api/journeys/{from_stop}/{to_stop}/{journey_date}/{start_time}": JourneyResponse;
+  "/api/map/lines": Array<LineSummary>;
+  "/api/map/lines/{line_code}/stops": Array<Stop>;
   "/api/map/network": NetworkMap;
+  "/api/map/schedules/lines": LinesAllResponse;
+  "/api/map/schedules/lines/{line_code}/{direction}": LineScheduleResponse;
   "/api/schedules/lines": LinesAllResponse;
   "/api/schedules/lines/{line_code}/{direction}": LineScheduleResponse;
   "/api/schedules/lines/{line_code}/{direction}/stops": LineStopsResponse;
@@ -59,6 +65,7 @@ export interface GetResponses {
   "/api/service/trains": ServiceAtGlanceResponse;
   "/api/service/union/departures": UnionDeparturesResponse;
   "/api/stops": Array<Stop>;
+  "/api/stops/{stop_code}/departures": StationDepartures;
   "/api/stops/{stop_code}/details": StopDetails;
   "/api/stops/{stop_code}/next-service": NextService;
   "/health": HealthResponse;
