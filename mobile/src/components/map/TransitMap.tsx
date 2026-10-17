@@ -21,7 +21,7 @@ export function TransitMap(props: TransitMapProps) {
       source={source}
       style={styles.map}
       originWhitelist={['*']}
-      applicationNameForUserAgent="TransitFlow/1.0"
+      applicationNameForUserAgent="PlatformNorth/1.0"
       mixedContentMode="never"
       javaScriptEnabled
       onLoadStart={() => setReady(false)}

@@ -3,15 +3,19 @@ import { styles } from './Brand.styles';
 
 export function Brand() {
   return (
-    <View style={styles.brand} accessible accessibilityLabel="TransitFlow">
+    <View
+      style={styles.brand}
+      accessible
+      accessibilityLabel="Next Platform. Your GO Transit commute."
+    >
       <Image
         source={require('../../../assets/brand/transitflow-mark.png')}
         style={styles.mark}
         accessible={false}
       />
       <View style={styles.words}>
-        <Text style={styles.name}>TransitFlow</Text>
-        <Text style={styles.tagline}>Plan. Ride. Arrive.</Text>
+        <Text style={styles.name}>Next Platform</Text>
+        <Text style={styles.tagline}>Your GO Transit commute.</Text>
       </View>
     </View>
   );

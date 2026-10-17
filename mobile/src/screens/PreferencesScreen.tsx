@@ -67,6 +67,12 @@ export function PreferencesScreen() {
             />
           ))}
       </Card>
+      <Card>
+        <SectionHeading title="About Platform North" />
+        <Text style={styles.subtitle}>
+          Independent trip planner for GO Transit. Not affiliated with Metrolinx.
+        </Text>
+      </Card>
       <StationPicker
         visible={picker !== null}
         title={`Choose ${picker ?? 'home'} station`}

@@ -1,6 +1,6 @@
 export const railLines = [
-  { code: 'LW', name: 'Lakeshore West', color: '#A52A2A' },
-  { code: 'LE', name: 'Lakeshore East', color: '#A52A2A' },
+  { code: 'LW', name: 'Lakeshore West', color: '#98002E' },
+  { code: 'LE', name: 'Lakeshore East', color: '#FF0D00' },
   { code: 'MI', name: 'Milton', color: '#F26522' },
   { code: 'KI', name: 'Kitchener', color: '#00853E' },
   { code: 'RH', name: 'Richmond Hill', color: '#0099CC' },

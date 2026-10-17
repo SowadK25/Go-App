@@ -1,6 +1,7 @@
 {
   "expo": {
-    "name": "TransitFlow",
+    "name": "Platform North",
+    "description": "Independent trip planner for GO Transit. Not affiliated with Metrolinx.",
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -21,9 +22,6 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      "expo-status-bar",
-      "@react-native-community/datetimepicker"
-    ]
+    "plugins": ["expo-status-bar", "@react-native-community/datetimepicker"]
   }
 }
