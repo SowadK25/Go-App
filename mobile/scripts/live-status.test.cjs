@@ -80,3 +80,21 @@ test('overall transfer status prioritizes cancellation and delay without assumin
   assert.equal(journeyLiveStatus([unknown, delayed]).kind, 'delayed');
   assert.equal(journeyLiveStatus([delayed, cancelled]).kind, 'cancelled');
 });
+
+
+test('UP legs use their own live feed and never match a GO train with the same number', () => {
+  const up = { ...journey, trips: [{ ...journey.trips[0], line: 'UP', number: 'UP-3030', service_date: '20261010' }] };
+  assert.equal(legOccurrence(up, 0).mode, 'up');
+  const upActive = { ...active, trip_number: 'UP-3030', line_code: 'UP', service_date: '20261010' };
+  assert.equal(legLiveStatus(up, 0, now, [upActive]).kind, 'delayed');
+  assert.equal(legLiveStatus(up, 0, now, [active]).kind, 'unavailable');
+  assert.equal(legLiveStatus(up, 0, now, [{ ...upActive, service_date: '20261009' }]).kind, 'unavailable');
+});
+
+test('UP cancellations match the service day, including a previous-day overnight service', () => {
+  const up = { ...journey, trips: [{ ...journey.trips[0], line: 'UP', number: 'UP-3030', service_date: '20261009' }] };
+  const feed = { mode: 'train', generated_at: '2026-10-10 18:46:00', trips: [{ trip_number: 'UP-3030', service_date: '20261010', is_cancelled: true }] };
+  assert.equal(legLiveStatus(up, 0, now, [], feed).kind, 'unavailable');
+  feed.trips[0].service_date = '20261009';
+  assert.equal(legLiveStatus(up, 0, now, [], feed).kind, 'cancelled');
+});

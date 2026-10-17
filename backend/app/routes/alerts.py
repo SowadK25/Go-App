@@ -6,6 +6,7 @@ from app.utils.errors import upstream_error
 from app.models.alerts import Alert, ServiceException, AllAlertsResponse
 from app import transformers as transform
 from app.utils.utils import normalize_text
+from app.utils.up_express import up_alerts
 
 router = APIRouter(prefix="/api/alerts", tags=["alerts"])
 client = MetrolinxClient()
@@ -61,6 +62,8 @@ async def get_service_alerts(
     try:
         raw = await client.get_service_alerts()
         alerts = transform.transform_alerts(raw, "Service")
+        if not line_code or line_code.upper() == "UP":
+            alerts.extend(up_alerts(await client.get_up_alerts()))
         return _filter_alerts(alerts, line_code, stop_code, trip_number, category, sub_category, status)
     except httpx.HTTPStatusError as e:
         raise upstream_error(e) from None
@@ -112,8 +115,15 @@ async def get_all_alerts(
         service_raw = await client.get_service_alerts()
         information_raw = await client.get_information_alerts()
 
+        up_messages, unavailable = [], []
+        if not line_code or line_code.upper() == "UP":
+            try:
+                up_messages = up_alerts(await client.get_up_alerts())
+            except Exception:
+                unavailable = ["UP"]
+
         service_alerts = _filter_alerts(
-            transform.transform_alerts(service_raw, "Service"),
+            transform.transform_alerts(service_raw, "Service") + up_messages,
             line_code, stop_code, trip_number, category, sub_category, status
         )
         info_alerts = _filter_alerts(
@@ -123,7 +133,8 @@ async def get_all_alerts(
 
         return {
             "service_alerts": service_alerts,
-            "information_alerts": info_alerts
+            "information_alerts": info_alerts,
+            "unavailable_lines": unavailable,
         }
     except httpx.HTTPStatusError as e:
         raise upstream_error(e) from None

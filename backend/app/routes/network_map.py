@@ -1,6 +1,6 @@
 import logging
 from fastapi import APIRouter, HTTPException, Path, Query
-from app.clients.gtfs import GtfsClient
+from app.clients.transit_gtfs import TransitGtfsClient
 from app.models.network_map import NetworkMap
 from app.models.stops import Stop
 from app.models.schedules import LinesAllResponse, LineScheduleResponse, LineSummary
@@ -8,7 +8,7 @@ from app.utils.utils import normalize_date, toronto_today
 from app.utils.gtfs_departures import ScheduleDateUnavailable
 
 router = APIRouter(prefix="/api/map", tags=["map"])
-client = GtfsClient()
+client = TransitGtfsClient()
 logger = logging.getLogger(__name__)
 
 
@@ -38,7 +38,7 @@ async def get_line_timetable(line_code: str, direction: str, schedule_date: str 
 
 @router.get("/network", response_model=NetworkMap)
 async def get_network_map():
-    """All stops and published train/bus route shapes in the GO GTFS feed."""
+    """All stops and published route shapes in the GO and UP GTFS feeds."""
     try:
         return await client.get_network()
     except Exception as exc:

@@ -16,10 +16,11 @@ export function useJourneyPredictions(
     journey.trips?.forEach((leg, index) => {
       const occurrence = legOccurrence(journey, index);
       if (occurrence && leg.number) {
-        const key = `${occurrence.date}:${leg.number}`;
+        const date = leg.service_date ?? occurrence.date;
+        const key = `${date}:${leg.number}`;
         specs.set(key, {
           number: leg.number,
-          date: occurrence.date,
+          date,
           eligible: (specs.get(key)?.eligible ?? false) || shouldRefreshLeg(journey, index, now),
         });
       }
@@ -44,14 +45,15 @@ export function useJourneyPredictions(
     const leg = journey.trips?.[index];
     const occurrence = legOccurrence(journey, index);
     if (!leg || !occurrence || !shouldRefreshLeg(journey, index, new Date())) return undefined;
-    const requestIndex = requests.findIndex(([key]) => key === `${occurrence.date}:${leg.number}`);
+    const date = leg.service_date ?? occurrence.date;
+    const requestIndex = requests.findIndex(([key]) => key === `${date}:${leg.number}`);
     const query = queries[requestIndex];
     if (
       !query ||
       query.isError ||
       query.fetchStatus === 'paused' ||
       Date.now() - query.dataUpdatedAt > 120000 ||
-      query.data?.date.replace(/-/g, '') !== occurrence.date
+      query.data?.date.replace(/-/g, '') !== date
     )
       return undefined;
     const report = query.data.trips?.find((item) => item.trip_number === leg.number);

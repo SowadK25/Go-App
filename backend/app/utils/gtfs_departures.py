@@ -48,7 +48,7 @@ class StationDayIndex:
         return StationDepartures(stop_code=code, date=self.date, departures=departures)
 
 
-def build_station_day(payload: bytes, date: str) -> StationDayIndex:
+def build_station_day(payload: bytes, date: str, trip_prefix: str = "") -> StationDayIndex:
     """Index boarding departures on a calendar day, including previous-day 24+ times."""
     day = datetime.strptime(date, "%Y%m%d")
     previous = day - timedelta(days=1)
@@ -96,12 +96,14 @@ def build_station_day(payload: bytes, date: str) -> StationDayIndex:
                 timeline = [JourneyStop(code=stop["stop_id"], order=index + 1,
                     time=_stop_time(service_day, stop, index == len(sequence) - 1))
                     for index, stop in enumerate(sequence)]
-                record = {"number": trip.get("trip_short_name", "").strip() or trip_id.rsplit("-", 1)[-1],
+                record = {"number": trip_prefix + (trip.get("trip_short_name", "").strip() or trip_id.rsplit("-", 1)[-1]),
                     "service_date": service_day.strftime("%Y%m%d"), "line_code": code,
                     "line_name": route["route_long_name"], "service_type": "T" if route["route_type"] == "2" else "B", "stops": timeline}
                 record.update(direction=trip.get("direction_id") or "0",
                               display=trip.get("trip_headsign") or names.get(timeline[-1].code, timeline[-1].code),
                               variant=trip.get("route_variant") or code)
+                if trip_prefix:
+                    record["arrivals"] = {stop["stop_id"]: (_time(service_day, stop.get("arrival_time")).strftime("%Y-%m-%d %H:%M:%S") if stop.get("arrival_time") else None) for stop in sequence}
                 for index, stop in enumerate(sequence[:-1]):
                     if stop.get("pickup_type") == "1": continue
                     if not timeline[index].time: continue

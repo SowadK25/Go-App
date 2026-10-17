@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useIsFocused } from '@react-navigation/native';
 import { transitApi } from '../api/transit';
+import { torontoDateTime } from '../utils/transit';
 export function useStops() {
   return useQuery({
     queryKey: ['stops'],
@@ -20,10 +21,11 @@ export function useAlerts(stopCode?: string, enabled = true) {
   });
 }
 export function useLines() {
+  const date = torontoDateTime().date;
   return useQuery({
-    queryKey: ['lines'],
-    queryFn: ({ signal }) => transitApi.lines(undefined, signal),
-    staleTime: 300000,
+    queryKey: ['lines', date],
+    queryFn: ({ signal }) => transitApi.timetableLines(date, signal),
+    staleTime: 86400000,
   });
 }
 

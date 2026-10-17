@@ -17,6 +17,7 @@ class JourneyTrip(BaseModel):
     vehicle_type: str
     depart_from_code: str
     destination_stop_code: str
+    service_date: Optional[str] = None
     stops: List[JourneyStop] = Field(default_factory=list)
 
 class JourneyService(BaseModel):
@@ -36,4 +37,3 @@ class JourneyResponse(BaseModel):
     date: str
     start_time: str
     journeys: List[JourneyService]
-    

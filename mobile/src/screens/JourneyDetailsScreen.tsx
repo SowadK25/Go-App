@@ -144,6 +144,8 @@ export function JourneyDetailsScreen({
                   )}
                   renderNotes={(stop) => {
                     const details = report?.stops?.find((item) => item.code === stop.code);
+                    if (details?.status === 'Skipped')
+                      return <StatusBadge label="Stop skipped" tone="danger" />;
                     const platform = details?.track_actual || details?.track_scheduled;
                     return platform && !['-', '--'].includes(platform.trim()) ? (
                       <Text style={styles.updated}>Platform {platform}</Text>

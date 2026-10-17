@@ -13,6 +13,7 @@ import { Card } from '../components/ui/Card';
 import { LineBadge } from '../components/ui/LineBadge';
 import { SectionHeading } from '../components/ui/SectionHeading';
 import { RequestState } from '../components/RequestState';
+import { StatusBadge } from '../components/ui/StatusBadge';
 import { StopTimeline } from '../components/transit/StopTimeline';
 import { styles } from './screens.styles';
 import { clipReportedTripStops } from '../utils/stationDepartures';
@@ -64,6 +65,7 @@ export function ScheduleTripDetailsScreen({
         {trip?.timestamp && (
           <Text style={styles.updated}>Updated {serviceTimestamp(trip.timestamp)}</Text>
         )}
+        {trip?.status === 'Cancelled' && <StatusBadge label="Cancelled" tone="danger" />}
       </Card>
       {details.isError && (
         <RequestState
@@ -94,6 +96,8 @@ export function ScheduleTripDetailsScreen({
             renderNotes={(_stop, index) => {
               const stop = reportedStops[index];
               if (!stop) return null;
+              if (stop.status === 'Skipped')
+                return <StatusBadge label="Stop skipped" tone="danger" />;
               const platform = stop.track_actual || stop.track_scheduled;
               return platform && !['-', '--'].includes(platform.trim()) ? (
                 <Text style={styles.updated}>Platform {platform}</Text>

@@ -27,20 +27,26 @@ export function ServiceAlertSummary() {
           onPress={() => navigation.navigate('Alerts')}
         >
           <View style={styles.iconCircle}>
-            <Icon name={count ? 'alert-circle' : 'check-circle'} />
+            <Icon
+              name={
+                count || alerts.data?.unavailable_lines?.length ? 'alert-circle' : 'check-circle'
+              }
+            />
           </View>
           <View style={styles.grow}>
             <Text style={styles.title}>
               {!alerts.data
                 ? 'Checking service alerts...'
-                : count
-                  ? `${count} Service Notice${count > 1 ? 's' : ''}`
-                  : 'No Reported Service Alerts'}
+                : alerts.data.unavailable_lines?.length
+                  ? 'Some service alerts unavailable'
+                  : count
+                    ? `${count} Service Notice${count > 1 ? 's' : ''}`
+                    : 'No Reported Service Alerts'}
             </Text>
             <Text style={styles.subtitle}>
               {count
                 ? 'Review updates before you travel.'
-                : 'View the latest GO Transit information.'}
+                : 'View the latest GO Transit and UP Express information.'}
             </Text>
           </View>
           <Icon name="chevron-right" size={16} />

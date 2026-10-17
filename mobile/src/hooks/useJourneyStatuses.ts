@@ -13,7 +13,7 @@ import {
   type LiveMode,
 } from '../utils/liveStatus';
 
-const modes: LiveMode[] = ['train', 'bus'];
+const modes: LiveMode[] = ['train', 'bus', 'up'];
 
 export function useJourneyStatuses(journeys: JourneyService[], enabled = true) {
   const focused = useIsFocused();

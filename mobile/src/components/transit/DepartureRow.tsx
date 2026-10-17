@@ -3,9 +3,11 @@ import { Icon } from '../ui/Icon';
 import { LineBadge } from '../ui/LineBadge';
 import { StatusBadge } from '../ui/StatusBadge';
 import { serviceTime } from '../../utils/transit';
+import { StopTime } from './StopTime';
 import { styles } from './transit.styles';
 export function DepartureRow({
   time,
+  estimated,
   destination,
   lineCode,
   platform,
@@ -15,6 +17,7 @@ export function DepartureRow({
   onPress,
 }: {
   time: string;
+  estimated?: string | null;
   destination: string;
   lineCode?: string;
   platform?: string | null;
@@ -26,7 +29,11 @@ export function DepartureRow({
   const content = (
     <>
       <View style={styles.between}>
-        <Text style={styles.departureTime}>{serviceTime(time)}</Text>
+        {estimated ? (
+          <StopTime scheduled={time} estimated={estimated} prominent />
+        ) : (
+          <Text style={styles.departureTime}>{serviceTime(time)}</Text>
+        )}
         {!!status && <StatusBadge label={status} />}
       </View>
       <View style={styles.row}>

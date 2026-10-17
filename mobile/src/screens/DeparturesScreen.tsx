@@ -58,6 +58,9 @@ export function DeparturesScreen({
     ...(alerts.data?.service_alerts ?? []),
     ...(alerts.data?.information_alerts ?? []),
   ];
+  const upAlertsUnavailable =
+    ['UN', 'BL', 'MD', 'WE', 'PA'].includes(stopCode) &&
+    alerts.data?.unavailable_lines?.includes('UP');
   return (
     <Screen header={false} scroll={false}>
       <FlatList
@@ -187,7 +190,12 @@ export function DeparturesScreen({
                   }}
                 />
               )}
-              {alerts.data && !notices.length && (
+              {upAlertsUnavailable && (
+                <Text style={styles.subtitle}>
+                  UP Express station updates are temporarily unavailable. Try refreshing.
+                </Text>
+              )}
+              {alerts.data && !notices.length && !upAlertsUnavailable && (
                 <Text style={styles.subtitle}>No station updates were reported.</Text>
               )}
               {notices.map((alert) => (

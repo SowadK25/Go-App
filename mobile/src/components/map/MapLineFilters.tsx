@@ -10,7 +10,7 @@ import { LineBadge } from '../ui/LineBadge';
 import { colors } from '../../theme/tokens';
 import { styles, chipColors, chipDotColor, chipTextColor } from './MapLineFilters.styles';
 
-const railOrder = ['LW', 'LE', 'MI', 'KI', 'BR', 'RH', 'ST'];
+const railOrder = ['LW', 'LE', 'MI', 'KI', 'BR', 'RH', 'ST', 'UP'];
 
 export function MapLineFilters({
   lines,

@@ -13,7 +13,9 @@ from app.utils.gtfs_schedules import timetable_lines, line_timetable, published_
 class GtfsClient:
     URL = "https://assets.metrolinx.com/raw/upload/Documents/Metrolinx/Open%20Data/GO-GTFS.zip"
 
-    def __init__(self):
+    def __init__(self, url: str | None = None, trip_prefix: str = ""):
+        self.url = url or self.URL
+        self.trip_prefix = trip_prefix
         self._cache = get_cache_backend()
         self._lock = asyncio.Lock()
         self._last_good: NetworkMap | None = None
@@ -28,7 +30,7 @@ class GtfsClient:
             if self._payload is not None and time.monotonic() - self._feed_updated < 86400:
                 return self._payload
             async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
-                async with client.stream("GET", self.URL) as response:
+                async with client.stream("GET", self.url) as response:
                     response.raise_for_status()
                     chunks = []
                     size = 0
@@ -45,7 +47,7 @@ class GtfsClient:
         key = (self._feed_updated, date)
         async with self._day_lock:
             if key not in self._days:
-                self._days[key] = await asyncio.to_thread(build_station_day, payload, date)
+                self._days[key] = await asyncio.to_thread(build_station_day, payload, date, self.trip_prefix)
             self._days.move_to_end(key)
             while len(self._days) > 2: self._days.popitem(last=False)
             return self._days[key]
@@ -65,7 +67,7 @@ class GtfsClient:
     async def get_network(self) -> NetworkMap:
         async with self._lock:
             try:
-                cached = await self._cache.get("gtfs-network-map:v1")
+                cached = await self._cache.get(f"gtfs-network-map:v2:{self.trip_prefix or 'GO'}")
                 if cached is not None:
                     self._last_good = NetworkMap.model_validate(cached)
                     return self._last_good
@@ -75,7 +77,7 @@ class GtfsClient:
                 result = await asyncio.to_thread(parse_gtfs_map, await self._load_feed())
                 self._last_good = result
                 try:
-                    await self._cache.set("gtfs-network-map:v1", result.model_dump(mode="json"), 86400)
+                    await self._cache.set(f"gtfs-network-map:v2:{self.trip_prefix or 'GO'}", result.model_dump(mode="json"), 86400)
                 except Exception:
                     pass
                 return result

@@ -91,7 +91,9 @@ export function AlertsScreen({
       <Text accessibilityRole="header" style={styles.title}>
         Service Alerts
       </Text>
-      <Text style={styles.subtitle}>The latest service and station updates for GO Transit.</Text>
+      <Text style={styles.subtitle}>
+        The latest service and station updates for GO Transit and UP Express.
+      </Text>
       <Card>
         <Pressable
           accessibilityRole="button"
@@ -143,6 +145,13 @@ export function AlertsScreen({
       {alerts.fetchStatus === 'paused' && (
         <Text style={styles.subtitle}>You are offline. Updates may be outdated.</Text>
       )}
+      {!!alerts.data?.unavailable_lines?.some(
+        (code) => !selectedCodes.length || selectedCodes.includes(code),
+      ) && (
+        <Text style={styles.subtitle}>
+          UP Express alerts are temporarily unavailable. Other loaded updates are shown below.
+        </Text>
+      )}
       {!notices.length && (
         <Card>
           <RequestState
@@ -152,9 +161,13 @@ export function AlertsScreen({
                 ? 'Checking service updates...'
                 : alerts.isError
                   ? 'Updates unavailable.'
-                  : selectedCodes.length
-                    ? `No service or information alerts were reported for ${filterName}.`
-                    : 'No service or information alerts were reported.'
+                  : alerts.data?.unavailable_lines?.some(
+                        (code) => !selectedCodes.length || selectedCodes.includes(code),
+                      )
+                    ? 'Some service updates are unavailable. Try refreshing.'
+                    : selectedCodes.length
+                      ? `No service or information alerts were reported for ${filterName}.`
+                      : 'No service or information alerts were reported.'
             }
           />
         </Card>

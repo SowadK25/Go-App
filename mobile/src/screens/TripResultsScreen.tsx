@@ -82,7 +82,8 @@ export function TripResultsScreen({
         </Text>
         {searchMode === 'arrive_by' && (
           <Text style={styles.subtitle}>
-            Arrivals from 1 hour before to 30 minutes after your chosen time. Live delays may affect arrival.
+            Arrivals from 1 hour before to 30 minutes after your chosen time. Live delays may affect
+            arrival.
           </Text>
         )}
       </Card>
@@ -186,7 +187,12 @@ export function TripResultsScreen({
           ))}
         </>
       ) : (
-        <FareOptionsCard fromCode={fromCode} toCode={toCode} date={date} />
+        <FareOptionsCard
+          fromCode={fromCode}
+          toCode={toCode}
+          date={date}
+          hasUp={available.some((journey) => journey.trips?.some((leg) => leg.line === 'UP'))}
+        />
       )}
     </Screen>
   );

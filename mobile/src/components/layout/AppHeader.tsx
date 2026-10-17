@@ -18,7 +18,10 @@ export function AppHeader() {
     trackedTrip && !trackingExpired(trackedTrip) ? journeyLineCodes(trackedTrip.journey) : [];
   const alerts = useAlerts(undefined, lineCodes.length > 0);
   const count =
-    alerts.data && !alerts.isError && alerts.fetchStatus !== 'paused'
+    alerts.data &&
+    !alerts.isError &&
+    alerts.fetchStatus !== 'paused' &&
+    !alerts.data.unavailable_lines?.some((code) => lineCodes.includes(code))
       ? filterAlertsByLines(
           [...alerts.data.service_alerts, ...alerts.data.information_alerts],
           lineCodes,

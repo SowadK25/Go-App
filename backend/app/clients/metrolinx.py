@@ -17,6 +17,9 @@ class MetrolinxClient:
 
     def _cache_ttl(self, endpoint: str) -> Optional[int]:
         cache_rules = [
+            ("UP/Gtfs/Feed/Alerts", 60),
+            ("UP/Gtfs/Feed/TripUpdates", 60),
+            ("UP/Gtfs/Feed/VehiclePosition", 60),
             ("Stop/All", 86400),
             ("Stop/Details/", 86400),
             ("Stop/NextService/", 15),
@@ -168,6 +171,12 @@ class MetrolinxClient:
         return await self._get("ServiceataGlance/Trains/All")
     
     # ========== GTFS Real-time Methods ==========
+
+    async def get_up_alerts(self):
+        return await self._get("UP/Gtfs/Feed/Alerts")
+
+    async def get_up_trip_updates(self):
+        return await self._get("UP/Gtfs/Feed/TripUpdates")
     
     async def get_gtfs_alerts(self):
         """Returns GTFS real-time alert feeds"""

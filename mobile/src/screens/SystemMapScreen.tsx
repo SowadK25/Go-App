@@ -83,7 +83,7 @@ export function SystemMapScreen({
             message={
               network.fetchStatus === 'paused'
                 ? 'Reconnect to load the map.'
-                : 'Loading the GO network map...'
+                : 'Loading the GO and UP Express network map...'
             }
           />
         )}
@@ -153,8 +153,8 @@ export function SystemMapScreen({
               station name or code. Pinch to zoom and drag to explore.
             </Text>
             <Text style={styles.paragraph}>
-              The map shows published GO train and bus routes. It is a network overview, not a live
-              vehicle map; check schedules for service on your travel date.
+              The map shows published GO train, bus, and UP Express routes. It is a network
+              overview, not a live vehicle map; check schedules for service on your travel date.
             </Text>
             <Text style={styles.paragraph}>
               Transit data: Metrolinx. Feed coverage: {serviceDate(network.data?.valid_from ?? '')}{' '}

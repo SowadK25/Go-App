@@ -7,7 +7,7 @@ export type LiveTripStatus = {
   tone: 'neutral' | 'success' | 'danger';
   delayMinutes?: number;
 };
-export type LiveMode = 'train' | 'bus';
+export type LiveMode = 'train' | 'bus' | 'up';
 const unavailable: LiveTripStatus = {
   kind: 'unavailable',
   label: 'Status unavailable',
@@ -51,11 +51,13 @@ export function legOccurrence(journey: JourneyService, index: number) {
     date,
     minute,
     mode:
-      leg.vehicle_type === 'T'
-        ? ('train' as const)
-        : leg.vehicle_type === 'B'
-          ? ('bus' as const)
-          : null,
+      canonicalLineCode(leg.line) === 'UP'
+        ? ('up' as const)
+        : leg.vehicle_type === 'T'
+          ? ('train' as const)
+          : leg.vehicle_type === 'B'
+            ? ('bus' as const)
+            : null,
   };
 }
 
@@ -118,7 +120,10 @@ export function legLiveStatus(
 
   if (exceptions && freshTimestamp(exceptions.generated_at, current.date, nowMinutes)) {
     const cancelled = exceptions.trips?.find(
-      (item) => item.trip_number === leg.number && item.is_cancelled,
+      (item) =>
+        item.trip_number === leg.number &&
+        item.is_cancelled &&
+        (!item.service_date || item.service_date === (leg.service_date ?? occurrence.date)),
     );
     if (cancelled) {
       const datedStops =
@@ -135,6 +140,7 @@ export function legLiveStatus(
   const active = trips?.find(
     (trip) =>
       trip.trip_number === leg.number &&
+      (!trip.service_date || trip.service_date === (leg.service_date ?? occurrence.date)) &&
       [trip.line_code, trip.route_number ?? ''].some(
         (code) => canonicalLineCode(code) === canonicalLineCode(leg.line),
       ) &&

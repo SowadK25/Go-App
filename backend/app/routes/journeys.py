@@ -6,11 +6,13 @@ from typing import Literal
 from fastapi import APIRouter, Query, HTTPException, Path
 from app.clients.metrolinx import MetrolinxClient
 from app.clients.go_schedules import GoSchedulesClient
+from app.clients.transit_gtfs import UP_STOPS
 from app.utils.official_journeys import transform_timetable, select_journeys, select_arrive_by
 from app.utils.errors import upstream_error
-from app.models.journeys import JourneyResponse
 from app import transformers as transform
 from app.utils.utils import normalize_date, normalize_time
+from app.utils.up_journeys import plan_up_journeys
+from app.models.journeys import JourneyResponse
 
 router = APIRouter(prefix="/api/journeys", tags=["journeys"])
 client = MetrolinxClient()
@@ -42,7 +44,7 @@ async def _fetch_arrive_by(from_stop: str, to_stop: str, date: str, time: str, m
         raise HTTPException(status_code=503, detail="Arrive-by search is temporarily unavailable. Try Depart at.") from None
 
 
-async def _fetch_journeys(from_stop: str, to_stop: str, journey_date: str, start_time: str, max_journeys: int, search_mode: str = "depart_at") -> JourneyResponse:
+async def _fetch_go_journeys(from_stop: str, to_stop: str, journey_date: str, start_time: str, max_journeys: int, search_mode: str = "depart_at") -> JourneyResponse:
     try:
         if search_mode == "arrive_by":
             return await _fetch_arrive_by(from_stop, to_stop, journey_date, start_time, max_journeys)
@@ -70,6 +72,33 @@ async def _fetch_journeys(from_stop: str, to_stop: str, journey_date: str, start
         raise HTTPException(status_code=502, detail="Unable to connect to transit provider.") from None
     except Exception:
         raise HTTPException(status_code=500, detail="Error fetching journeys") from None
+
+async def _fetch_journeys(from_stop, to_stop, journey_date, start_time, max_journeys, search_mode="depart_at"):
+    async def go_options(origin, destination, date):
+        payload = await official_client.get_timetable(origin, destination, date)
+        return transform_timetable(payload, origin, destination, date, "0000").journeys
+
+    result = JourneyResponse(from_stop=from_stop, to_stop=to_stop, date=journey_date, start_time=start_time, journeys=[])
+    try:
+        result = await _fetch_go_journeys(from_stop, to_stop, journey_date, start_time, max_journeys, search_mode)
+        result.journeys = [option for option in result.journeys if not any(leg.line in {"UP", "UPX"} for leg in option.trips)]
+    except HTTPException:
+        if "PA" not in {from_stop, to_stop} and not {from_stop, to_stop}.issubset(UP_STOPS):
+            raise
+    try:
+        options = await plan_up_journeys(from_stop, to_stop, journey_date, go_options, search_mode == "arrive_by")
+        if search_mode == "arrive_by":
+            result.journeys = select_arrive_by(result.journeys + options, journey_date, start_time, max_journeys)
+        else:
+            target = datetime.strptime(journey_date + start_time, "%Y%m%d%H%M").strftime("%Y-%m-%d %H:%M:%S")
+            result.journeys.extend(option for option in options if option.start_time >= target and option.start_time[:10].replace("-", "") == journey_date)
+            result.journeys = select_journeys(result, max_journeys)
+    except Exception as exc:
+        logger.warning("UP timetable unavailable: %s", type(exc).__name__)
+        if ("PA" in {from_stop, to_stop} or {from_stop, to_stop}.issubset(UP_STOPS)) and not result.journeys:
+            raise HTTPException(status_code=503, detail="UP Express journeys are temporarily unavailable. Please try again.") from None
+    return result
+
 
 @router.get("/{from_stop}/{to_stop}/{journey_date}/{start_time}", response_model=JourneyResponse)
 async def get_journeys(

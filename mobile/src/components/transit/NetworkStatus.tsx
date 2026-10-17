@@ -46,7 +46,7 @@ export function NetworkStatus() {
         );
         const scheduled = !!scheduledLine;
         const label =
-          !alerts.data || !lines.data
+          !alerts.data || !lines.data || alerts.data.unavailable_lines?.includes(line.code)
             ? 'Status unavailable'
             : count
               ? `${count} service notice${count > 1 ? 's' : ''}`
@@ -72,7 +72,13 @@ export function NetworkStatus() {
             </View>
             <StatusBadge
               label={label}
-              tone={count ? 'warning' : scheduled && alerts.data ? 'success' : 'neutral'}
+              tone={
+                count
+                  ? 'warning'
+                  : scheduled && alerts.data && !alerts.data.unavailable_lines?.includes(line.code)
+                    ? 'success'
+                    : 'neutral'
+              }
             />
           </Pressable>
         );

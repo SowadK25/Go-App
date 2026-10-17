@@ -9,5 +9,5 @@ export function scriptJson(value: unknown) {
 }
 
 export function createMapDocument(network: NetworkMap) {
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"><style>${leafletCss}\n${mapCss}</style></head><body><div id="map" aria-label="GO Transit network map"></div><script>${leafletJs.replace(/<\/script/gi, '<\\/script')}</script><script>window.TRANSIT_NETWORK=${scriptJson(network)};</script><script>${mapRuntime.replace(/<\/script/gi, '<\\/script')}</script></body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"><style>${leafletCss}\n${mapCss}</style></head><body><div id="map" aria-label="GO Transit and UP Express network map"></div><script>${leafletJs.replace(/<\/script/gi, '<\\/script')}</script><script>window.TRANSIT_NETWORK=${scriptJson(network)};</script><script>${mapRuntime.replace(/<\/script/gi, '<\\/script')}</script></body></html>`;
 }

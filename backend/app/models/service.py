@@ -5,6 +5,7 @@ from typing import List, Optional
 class ServiceTrip(BaseModel):
     """Active in-service trip from Service at a Glance."""
     trip_number: str
+    service_date: Optional[str] = None
     line_code: str
     route_number: Optional[str] = None
     direction: Optional[str] = None
@@ -41,6 +42,8 @@ class ServiceAtGlanceResponse(BaseModel):
 class UnionDeparture(BaseModel):
     """Departure from Union Station."""
     trip_number: str
+    service_date: Optional[str] = None
+    computed_departure_time: Optional[str] = None
     service: str
     service_type: str
     info: str
@@ -82,6 +85,7 @@ class ServiceExceptionStop(BaseModel):
 class ServiceExceptionTrip(BaseModel):
     """Trip-level exception summary."""
     trip_number: str
+    service_date: Optional[str] = None
     trip_name: Optional[str] = None
     is_cancelled: bool = False
     is_override: bool = False

@@ -19,6 +19,7 @@ class Alert(BaseModel):
 class AllAlertsResponse(BaseModel):
     service_alerts: List[Alert]
     information_alerts: List[Alert]
+    unavailable_lines: List[str] = Field(default_factory=list)
 
 
 class ServiceException(BaseModel):

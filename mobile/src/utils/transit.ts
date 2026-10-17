@@ -6,17 +6,20 @@ export const railLines = [
   { code: 'RH', name: 'Richmond Hill', color: '#0099CC' },
   { code: 'BR', name: 'Barrie', color: '#00529B' },
   { code: 'ST', name: 'Stouffville', color: '#794500' },
+  { code: 'UP', name: 'UP Express', color: '#0075D2' },
 ] as const;
 export function lineInfo(code: string) {
   return railLines.find((line) => line.code === canonicalLineCode(code));
 }
 export function canonicalLineCode(code: string) {
   // Metrolinx still uses GT for the Kitchener line in its API.
-  return code.toUpperCase() === 'GT' ? 'KI' : code.toUpperCase();
+  const value = code.toUpperCase();
+  return value === 'GT' ? 'KI' : value === 'UPX' ? 'UP' : value;
 }
 
 export function serviceLineCode(service: string) {
   const name = service.trim().toLowerCase();
+  if (name === 'union pearson express') return 'UP';
   const line = railLines.find(
     (line) => line.name.toLowerCase() === name || line.code === canonicalLineCode(service.trim()),
   );

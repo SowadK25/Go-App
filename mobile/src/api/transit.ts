@@ -40,7 +40,7 @@ export const transitApi = {
   networkMap: (signal?: AbortSignal) =>
     request<GetResponses['/api/map/network']>('/api/map/network', signal, 45000),
   health: (signal?: AbortSignal) => request<GetResponses['/health']>('/health', signal),
-  stops: (signal?: AbortSignal) => request<GetResponses['/api/stops']>('/api/stops', signal),
+  stops: (signal?: AbortSignal) => request<GetResponses['/api/stops']>('/api/stops', signal, 45000),
   stopDetails: (stop: string, signal?: AbortSignal) =>
     request<GetResponses['/api/stops/{stop_code}/details']>(
       `/api/stops/${code(stop)}/details`,
@@ -63,6 +63,7 @@ export const transitApi = {
     request<GetResponses['/api/journeys/{from_stop}/{to_stop}/{journey_date}/{start_time}']>(
       `/api/journeys/${code(from)}/${code(to)}/${code(date)}/${code(time)}${query({ max_journeys: maxJourneys, search_mode: searchMode })}`,
       signal,
+      45000,
     ),
   fares: (from: string, to: string, date?: string, signal?: AbortSignal) =>
     request<GetResponses['/api/fares/{from_stop}/{to_stop}']>(
@@ -86,12 +87,12 @@ export const transitApi = {
     ),
   unionDepartures: (signal?: AbortSignal) =>
     request<GetResponses['/api/service/union/departures']>('/api/service/union/departures', signal),
-  liveService: (mode: 'train' | 'bus', signal?: AbortSignal) =>
+  liveService: (mode: 'train' | 'bus' | 'up', signal?: AbortSignal) =>
     request<GetResponses['/api/service/trains']>(
-      `/api/service/${mode === 'train' ? 'trains' : 'buses'}`,
+      `/api/service/${mode === 'train' ? 'trains' : mode === 'up' ? 'up' : 'buses'}`,
       signal,
     ),
-  serviceExceptions: (mode: 'train' | 'bus', signal?: AbortSignal) =>
+  serviceExceptions: (mode: 'train' | 'bus' | 'up', signal?: AbortSignal) =>
     request<GetResponses['/api/service/exceptions/train']>(
       `/api/service/exceptions/${mode}`,
       signal,

@@ -64,7 +64,8 @@ export function UnionDeparturesScreen({
         {departures.data?.departures?.map((departure, index) => (
           <DepartureRow
             key={`${departure.trip_number}-${index}`}
-            time={departure.departure_time}
+            time={departure.departure_datetime}
+            estimated={departure.computed_departure_time}
             destination={departure.destination || departure.service}
             lineCode={serviceLineCode(departure.service)}
             platform={departure.platform}
@@ -75,8 +76,10 @@ export function UnionDeparturesScreen({
                 title: departure.destination || departure.service,
                 lineCode: serviceLineCode(departure.service),
                 date:
+                  departure.service_date ??
                   departure.departure_datetime.match(/^\d{4}-\d{2}-\d{2}/)?.[0].replace(/-/g, '') ??
                   torontoDateTime().date,
+                displayDate: departure.departure_datetime.slice(0, 10).replace(/-/g, ''),
               })
             }
           />

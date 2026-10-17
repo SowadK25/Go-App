@@ -6,6 +6,7 @@ from app.utils.errors import upstream_error
 from app.models.schedules import LinesAllResponse, LineScheduleResponse, LineStopsResponse, TripScheduleResponse
 from app import transformers as transform
 from app.utils.utils import normalize_date, toronto_today
+from app.utils.up_express import up_trip_schedule
 
 router = APIRouter(prefix="/api/schedules", tags=["schedules"])
 client = MetrolinxClient()
@@ -105,6 +106,11 @@ async def get_trip_schedule(
     schedule_date = normalize_date(schedule_date) if schedule_date is not None else toronto_today()
     
     try:
+        if trip_number.startswith("UP-"):
+            try:
+                return await up_trip_schedule(trip_number, schedule_date)
+            except KeyError:
+                raise HTTPException(status_code=404, detail="UP trip not found for this date.") from None
         raw = await client.get_trip_schedule(schedule_date, trip_number)
         return transform.transform_trip_schedule(raw, schedule_date, trip_number)
     except httpx.HTTPStatusError as e:

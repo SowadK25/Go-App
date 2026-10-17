@@ -12,9 +12,29 @@ from app.models.service import (
 )
 from app import transformers as transform
 from app.utils.utils import normalize_text
+from app.utils.up_express import up_live_data, up_union_departures
 
 router = APIRouter(prefix="/api/service", tags=["service"])
 client = MetrolinxClient()
+
+
+@router.get("/up", response_model=ServiceAtGlanceResponse)
+async def get_up_service():
+    try:
+        trips, _ = await up_live_data()
+        response = ServiceAtGlanceResponse(mode="train", trips=trips)
+        return _filter_service_trips(response, None, None, None, None, None)
+    except Exception:
+        raise HTTPException(status_code=503, detail="UP Express live status is temporarily unavailable.") from None
+
+
+@router.get("/exceptions/up", response_model=ServiceExceptionsResponse)
+async def get_up_exceptions():
+    try:
+        _, exceptions = await up_live_data()
+        return exceptions
+    except Exception:
+        raise HTTPException(status_code=503, detail="UP Express live updates are temporarily unavailable.") from None
 
 
 def _ensure_trip_found(trip_number: Optional[str], total: int) -> None:
@@ -182,6 +202,11 @@ async def get_union_departures(
     try:
         raw = await client.get_union_departures()
         response = transform.transform_union_departures(raw)
+        try:
+            response.departures.extend(await up_union_departures())
+            response.departures.sort(key=lambda departure: departure.departure_datetime)
+        except Exception:
+            pass
 
         service_filter = normalize_text(service) if service else None
         service_type_filter = service_type.strip().upper() if service_type else None
