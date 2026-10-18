@@ -43,6 +43,8 @@ export const styles = StyleSheet.create({
   actionText: { color: colors.surface, fontSize: 14, fontWeight: '700' },
   secondary: { backgroundColor: colors.primarySoft },
   secondaryText: { color: colors.primary },
+  destructive: { backgroundColor: colors.dangerSoft },
+  destructiveText: { color: colors.danger },
   badge: {
     minWidth: 24,
     borderRadius: 4,

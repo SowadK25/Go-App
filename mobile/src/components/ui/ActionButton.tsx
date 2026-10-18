@@ -8,6 +8,7 @@ export function ActionButton({
   onPress,
   icon,
   secondary = false,
+  destructive = false,
   disabled = false,
   loading = false,
 }: {
@@ -15,9 +16,11 @@ export function ActionButton({
   onPress: () => void;
   icon?: IconName;
   secondary?: boolean;
+  destructive?: boolean;
   disabled?: boolean;
   loading?: boolean;
 }) {
+  const foreground = destructive ? colors.danger : secondary ? colors.primary : colors.surface;
   return (
     <MotionPressable
       accessibilityRole="button"
@@ -28,16 +31,25 @@ export function ActionButton({
       style={({ pressed }) => [
         styles.action,
         secondary && styles.secondary,
+        destructive && styles.destructive,
         (disabled || loading) && styles.disabled,
         pressed && styles.pressed,
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={secondary ? colors.primary : colors.surface} />
+        <ActivityIndicator color={foreground} />
       ) : (
-        icon && <Icon name={icon} size={17} color={secondary ? colors.primary : colors.surface} />
+        icon && <Icon name={icon} size={17} color={foreground} />
       )}
-      <Text style={[styles.actionText, secondary && styles.secondaryText]}>{title}</Text>
+      <Text
+        style={[
+          styles.actionText,
+          secondary && styles.secondaryText,
+          destructive && styles.destructiveText,
+        ]}
+      >
+        {title}
+      </Text>
     </MotionPressable>
   );
 }

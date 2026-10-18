@@ -34,7 +34,7 @@ export function PreferencesScreen() {
             {preferences[kind] && (
               <ActionButton
                 title="Clear station"
-                secondary
+                destructive
                 onPress={() => preferences.setCommuteStop(kind, null)}
               />
             )}
