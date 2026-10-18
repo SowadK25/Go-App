@@ -60,7 +60,7 @@ export function HomeScreen() {
           <ShortcutCard
             title="Stations"
             subtitle="Find your stop"
-            icon="map"
+            icon="map-pin"
             style={styles.grow}
             onPress={() => navigation.navigate('Main', { screen: 'Stations' })}
           />

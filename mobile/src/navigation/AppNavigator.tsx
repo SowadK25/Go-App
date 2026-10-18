@@ -22,7 +22,7 @@ const Stack = createNativeStackNavigator<RootStackParams>();
 const Tabs = createBottomTabNavigator<MainTabParams>();
 const icons: Record<keyof MainTabParams, IconName> = {
   Home: 'home',
-  Stations: 'map',
+  Stations: 'map-pin',
   Schedules: 'clock',
   AlertsTab: 'bell',
 };
