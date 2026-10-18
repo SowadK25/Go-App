@@ -56,11 +56,7 @@ export function AppNavigator() {
           options={{ title: 'Trip Details' }}
         />
         <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
-        <Stack.Screen
-          name="SystemMap"
-          component={SystemMapScreen}
-          options={{ title: 'System Map' }}
-        />
+        <Stack.Screen name="SystemMap" component={SystemMapScreen} options={{ title: 'Map' }} />
         <Stack.Screen
           name="UnionDepartures"
           component={UnionDeparturesScreen}

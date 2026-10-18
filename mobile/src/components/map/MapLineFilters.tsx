@@ -1,16 +1,83 @@
 import { useState } from 'react';
 import { FlatList, Text, View } from 'react-native';
 import type { MapLine } from '../../api/generated';
-import { SelectionModal } from '../layout/SelectionModal';
+import { BottomSheet } from '../layout/BottomSheet';
 import { SearchField } from '../transit/SearchField';
 import { MotionPressable } from '../ui/MotionPressable';
+import { ActionButton } from '../ui/ActionButton';
 import { IconButton } from '../ui/IconButton';
 import { Icon } from '../ui/Icon';
 import { LineBadge } from '../ui/LineBadge';
 import { colors } from '../../theme/tokens';
-import { styles, chipColors, chipDotColor, chipTextColor } from './MapLineFilters.styles';
+import { styles } from './MapLineFilters.styles';
 
 const railOrder = ['LW', 'LE', 'MI', 'KI', 'BR', 'RH', 'ST', 'UP'];
+
+function RouteRow({
+  line,
+  selected,
+  onPress,
+  compact = false,
+}: {
+  line: MapLine;
+  selected: boolean;
+  onPress: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <MotionPressable
+      accessibilityRole="checkbox"
+      accessibilityLabel={`${line.name} ${line.vehicle_type === 'Train' ? 'line' : 'bus route'} ${line.code}`}
+      accessibilityState={{ checked: selected }}
+      aria-checked={selected}
+      style={[styles.row, compact && styles.trainRow, selected && styles.selectedRow]}
+      onPress={onPress}
+    >
+      <LineBadge code={line.code} />
+      <Text style={styles.routeName}>{line.name}</Text>
+      <Icon
+        name={selected ? 'check-square' : 'square'}
+        color={selected ? colors.primary : colors.muted}
+      />
+    </MotionPressable>
+  );
+}
+
+function RouteSectionHeading({
+  title,
+  count,
+  total,
+  onSetVisible,
+}: {
+  title: string;
+  count: number;
+  total: number;
+  onSetVisible: (visible: boolean) => void;
+}) {
+  return (
+    <View style={styles.section}>
+      <View style={styles.heading}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        <Text style={styles.count}>
+          {count} of {total} shown
+        </Text>
+      </View>
+      <View style={styles.bulk}>
+        {([true, false] as const).map((visible) => (
+          <MotionPressable
+            key={String(visible)}
+            accessibilityRole="button"
+            accessibilityLabel={`${visible ? 'Show' : 'Hide'} all ${title.toLowerCase()}`}
+            style={styles.bulkButton}
+            onPress={() => onSetVisible(visible)}
+          >
+            <Text style={styles.bulkLabel}>{visible ? 'Show all' : 'Hide all'}</Text>
+          </MotionPressable>
+        ))}
+      </View>
+    </View>
+  );
+}
 
 export function MapLineFilters({
   lines,
@@ -23,7 +90,7 @@ export function MapLineFilters({
   onToggle: (code: string) => void;
   onSetVisible: (codes: string[], visible: boolean) => void;
 }) {
-  const [showBuses, setShowBuses] = useState(false);
+  const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const rails = lines
     .filter((line) => line.vehicle_type === 'Train')
@@ -31,114 +98,109 @@ export function MapLineFilters({
   const buses = lines
     .filter((line) => line.vehicle_type === 'Bus')
     .sort((a, b) => a.code.localeCompare(b.code, 'en', { numeric: true }));
-  const shown = buses.filter((line) => !hiddenCodes.includes(line.code)).length;
+  const trainCount = rails.filter((line) => !hiddenCodes.includes(line.code)).length;
+  const busCount = buses.filter((line) => !hiddenCodes.includes(line.code)).length;
+  const summary =
+    [
+      trainCount ? `${trainCount} train ${trainCount === 1 ? 'line' : 'lines'}` : '',
+      busCount ? `${busCount} bus ${busCount === 1 ? 'route' : 'routes'}` : '',
+    ]
+      .filter(Boolean)
+      .join(' | ') || 'No routes shown';
   const close = () => {
-    setShowBuses(false);
+    setOpen(false);
     setSearch('');
   };
+
   return (
-    <View style={styles.container}>
-      <View style={styles.chips}>
-        {rails.map((line) => {
-          const selected = !hiddenCodes.includes(line.code);
-          return (
-            <MotionPressable
-              key={line.code}
-              accessibilityRole="checkbox"
-              accessibilityLabel={`${line.name} line ${line.code}`}
-              accessibilityState={{ checked: selected }}
-              aria-checked={selected}
-              style={[styles.chip, chipColors(line.color, selected)]}
-              onPress={() => onToggle(line.code)}
-            >
-              <View style={[styles.dot, chipDotColor(line.color, selected)]} />
-              <Text style={[styles.code, chipTextColor(selected)]}>{line.code}</Text>
-            </MotionPressable>
-          );
-        })}
-      </View>
-      <View style={styles.actions}>
-        <MotionPressable
-          accessibilityRole="button"
-          accessibilityLabel="Choose bus routes on map"
-          style={styles.busButton}
-          onPress={() => setShowBuses(true)}
-        >
-          <Icon name="truck" size={16} />
-          <Text style={styles.busLabel}>
-            Bus routes ({shown}/{buses.length})
-          </Text>
-          <Icon name="chevron-down" size={16} />
-        </MotionPressable>
-      </View>
-      <SelectionModal visible={showBuses} onClose={close}>
+    <>
+      <MotionPressable
+        accessibilityRole="button"
+        accessibilityLabel={`Routes. ${summary}. Choose routes on the map`}
+        accessibilityState={{ expanded: open }}
+        style={styles.trigger}
+        onPress={() => setOpen(true)}
+      >
+        <Icon name="sliders" size={18} />
+        <View style={styles.triggerText}>
+          <Text style={styles.triggerTitle}>Routes</Text>
+          <Text style={styles.summary}>{summary}</Text>
+        </View>
+        <Icon name="chevron-down" size={18} />
+      </MotionPressable>
+      <BottomSheet visible={open} onClose={close}>
         <View style={styles.modal}>
           <View style={styles.heading}>
-            <Text style={styles.title}>Bus Routes</Text>
-            <IconButton name="x" label="Close bus route filters" onPress={close} />
-          </View>
-          <SearchField
-            value={search}
-            onChange={setSearch}
-            placeholder="Search bus route name or number..."
-          />
-          <View style={styles.bulk}>
-            <MotionPressable
-              accessibilityRole="button"
-              accessibilityLabel="Show all bus routes"
-              style={styles.bulkButton}
-              onPress={() =>
-                onSetVisible(
-                  buses.map((line) => line.code),
-                  true,
-                )
-              }
-            >
-              <Text style={styles.bulkLabel}>Show all</Text>
-            </MotionPressable>
-            <MotionPressable
-              accessibilityRole="button"
-              accessibilityLabel="Hide all bus routes"
-              style={styles.bulkButton}
-              onPress={() =>
-                onSetVisible(
-                  buses.map((line) => line.code),
-                  false,
-                )
-              }
-            >
-              <Text style={styles.bulkLabel}>Hide all</Text>
-            </MotionPressable>
+            <View>
+              <Text style={styles.title}>Routes</Text>
+              <Text style={styles.hint}>Choose what appears on your map.</Text>
+            </View>
+            <IconButton name="x" label="Close route filters" onPress={close} />
           </View>
           <FlatList
             style={styles.list}
+            contentContainerStyle={styles.listContent}
             data={buses.filter((line) =>
               `${line.code} ${line.name}`.toLowerCase().includes(search.trim().toLowerCase()),
             )}
             keyExtractor={(line) => line.code}
             extraData={hiddenCodes}
             keyboardShouldPersistTaps="handled"
-            ListEmptyComponent={<Text style={styles.routeName}>No matching bus routes.</Text>}
-            renderItem={({ item: line }) => (
-              <MotionPressable
-                accessibilityRole="checkbox"
-                accessibilityLabel={`${line.name} bus route ${line.code}`}
-                accessibilityState={{ checked: !hiddenCodes.includes(line.code) }}
-                aria-checked={!hiddenCodes.includes(line.code)}
-                style={styles.row}
-                onPress={() => onToggle(line.code)}
-              >
-                <LineBadge code={line.code} />
-                <Text style={styles.routeName}>{line.name}</Text>
-                <Icon
-                  name={hiddenCodes.includes(line.code) ? 'square' : 'check-square'}
-                  color={hiddenCodes.includes(line.code) ? colors.muted : colors.primary}
+            keyboardDismissMode="on-drag"
+            ListHeaderComponent={
+              <View style={styles.listHeader}>
+                <RouteSectionHeading
+                  title="Train lines"
+                  count={trainCount}
+                  total={rails.length}
+                  onSetVisible={(visible) =>
+                    onSetVisible(
+                      rails.map((line) => line.code),
+                      visible,
+                    )
+                  }
                 />
-              </MotionPressable>
+                <View style={styles.railRows}>
+                  {rails.map((line) => (
+                    <RouteRow
+                      key={line.code}
+                      line={line}
+                      compact
+                      selected={!hiddenCodes.includes(line.code)}
+                      onPress={() => onToggle(line.code)}
+                    />
+                  ))}
+                </View>
+                <RouteSectionHeading
+                  title="Bus routes"
+                  count={busCount}
+                  total={buses.length}
+                  onSetVisible={(visible) =>
+                    onSetVisible(
+                      buses.map((line) => line.code),
+                      visible,
+                    )
+                  }
+                />
+                <SearchField
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Search bus route name or number..."
+                />
+              </View>
+            }
+            ListEmptyComponent={<Text style={styles.hint}>No matching bus routes.</Text>}
+            renderItem={({ item: line }) => (
+              <RouteRow
+                line={line}
+                selected={!hiddenCodes.includes(line.code)}
+                onPress={() => onToggle(line.code)}
+              />
             )}
           />
+          <ActionButton title="Done" onPress={close} />
         </View>
-      </SelectionModal>
-    </View>
+      </BottomSheet>
+    </>
   );
 }

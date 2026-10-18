@@ -32,7 +32,7 @@ export function TransitMap(props: TransitMapProps) {
   return (
     <iframe
       ref={ref}
-      title="Interactive GO Transit system map"
+      title="Interactive GO Transit and UP Express map"
       srcDoc={html}
       sandbox="allow-scripts allow-same-origin"
       style={frameStyle}

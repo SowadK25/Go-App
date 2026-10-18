@@ -1,35 +1,29 @@
 import { StyleSheet } from 'react-native';
 import { colors } from '../../theme/tokens';
+
 export const styles = StyleSheet.create({
-  container: { gap: 6 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
-  chip: {
-    minWidth: 44,
-    minHeight: 44,
-    paddingHorizontal: 6,
-    borderRadius: 22,
+  trigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minHeight: 52,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  dot: { width: 6, height: 6, borderRadius: 3 },
-  code: { fontSize: 12, fontWeight: '700' },
-  actions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  busButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    minHeight: 44,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+    borderColor: colors.border,
     backgroundColor: colors.surface,
   },
-  busLabel: { color: colors.text, fontSize: 13, fontWeight: '600' },
+  triggerText: { flex: 1, gap: 2 },
+  triggerTitle: { color: colors.text, fontSize: 13, fontWeight: '600' },
+  summary: { color: colors.muted, fontSize: 11 },
   modal: { flex: 1, padding: 16, gap: 12 },
-  heading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  heading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   title: { color: colors.text, fontSize: 22, fontWeight: '700' },
+  hint: { color: colors.muted, fontSize: 13, marginTop: 4 },
+  section: { gap: 8 },
+  sectionTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  count: { color: colors.muted, fontSize: 12 },
   bulk: { flexDirection: 'row', gap: 8 },
   bulkButton: {
     flex: 1,
@@ -41,28 +35,21 @@ export const styles = StyleSheet.create({
   },
   bulkLabel: { color: colors.primary, fontSize: 13, fontWeight: '600' },
   list: { flex: 1 },
+  listContent: { gap: 6, paddingBottom: 8 },
+  listHeader: { gap: 12, paddingBottom: 6 },
+  railRows: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  trainRow: { width: '48%', flexGrow: 1, gap: 6, minHeight: 64 },
   row: {
-    minHeight: 60,
-    padding: 12,
+    minHeight: 52,
+    padding: 10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
   },
+  selectedRow: { backgroundColor: colors.primarySoft },
   routeName: { flex: 1, color: colors.text, fontSize: 13 },
 });
-
-export function chipColors(color: string, selected: boolean) {
-  return {
-    backgroundColor: selected ? color : colors.surface,
-    borderColor: selected ? color : colors.border,
-  };
-}
-export function chipDotColor(color: string, selected: boolean) {
-  return { backgroundColor: selected ? colors.surface : color };
-}
-export function chipTextColor(selected: boolean) {
-  return { color: selected ? colors.surface : colors.muted };
-}

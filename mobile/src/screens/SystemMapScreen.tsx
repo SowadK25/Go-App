@@ -148,9 +148,9 @@ export function SystemMapScreen({
               <IconButton name="x" label="Close map information" onPress={() => setInfo(false)} />
             </View>
             <Text style={styles.paragraph}>
-              Tap a station to view departures. Toggle the coloured line chips to show or hide
-              lines. Choose any combination of bus routes. Tap a route to focus on it. Search by
-              station name or code. Pinch to zoom and drag to explore.
+              Tap a station to view departures. Open Routes to show or hide train lines and search
+              bus routes. Choose any combination, then tap Done. Tap a route to focus on it. Search
+              by station name or code. Pinch to zoom and drag to explore.
             </Text>
             <Text style={styles.paragraph}>
               The map shows published GO train, bus, and UP Express routes. It is a network

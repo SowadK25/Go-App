@@ -12,7 +12,6 @@ import { SearchField } from '../components/transit/SearchField';
 import { StationRow } from '../components/transit/StationRow';
 import { ChoiceChip } from '../components/transit/ChoiceChip';
 import { Icon } from '../components/ui/Icon';
-import { ActionButton } from '../components/ui/ActionButton';
 import { RequestState } from '../components/RequestState';
 import { railLines, canonicalLineCode } from '../utils/transit';
 import { filterStationDirectory } from '../utils/stationDirectory';
@@ -51,12 +50,6 @@ export function StationsScreen() {
   return (
     <Screen scroll={false}>
       <View style={styles.header}>
-        <ActionButton
-          title="System Map"
-          icon="map"
-          secondary
-          onPress={() => navigation.navigate('SystemMap')}
-        />
         <SearchField value={search} onChange={setSearch} />
         <ScrollView
           horizontal

@@ -73,6 +73,13 @@ export function HomeScreen() {
           />
         </View>
         <ShortcutCard
+          title="Map"
+          subtitle="Explore stations & routes"
+          icon="map"
+          showChevron
+          onPress={() => navigation.navigate('SystemMap')}
+        />
+        <ShortcutCard
           title="Union Departures"
           subtitle="Live times & platforms"
           icon="train"
