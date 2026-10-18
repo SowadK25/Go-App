@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Platform North",
+    "name": "Unionbound",
     "description": "Independent trip planner for GO Transit. Not affiliated with Metrolinx.",
-    "slug": "mobile",
+    "slug": "unionbound",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

@@ -1,6 +1,6 @@
-# Platform North
+# Unionbound
 
-Platform North is an unofficial trip planner for GO Transit, built with Expo + React Native + TypeScript. The core transit UI follows the Base44 reference: a green header, overlapping trip planner, rounded cards, and bottom navigation.
+Unionbound is an unofficial trip planner for GO Transit, built with Expo + React Native + TypeScript. The core transit UI follows the Base44 reference: a green header, overlapping trip planner, rounded cards, and bottom navigation.
 
 UP Express appears in the home network status, station filters and favorites, schedules, alerts, Union departures, and the system map. Its five stations share GO station IDs where applicable; Pearson also retains its GO bus services. The planner supports direct UP trips and timed GO/UP airport connections, including arrive-by searches and trip tracking. Live UP trip status and stop predictions use separate provider feeds with the existing near-departure refresh rules. The Fares tab identifies UP as a separate fare and links to official prices; GO-only fares are labelled explicitly, and combined fares are not estimated.
 

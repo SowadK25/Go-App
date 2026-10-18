@@ -1,6 +1,6 @@
 # GO Transit backend
 
-FastAPI backend for Platform North, an independent GO Transit and UP Express trip planner. It fetches Metrolinx data and exposes typed responses for stations, departures, journey planning, schedules, fares, and service alerts.
+FastAPI backend for Unionbound, an independent GO Transit and UP Express trip planner. It fetches Metrolinx data and exposes typed responses for stations, departures, journey planning, schedules, fares, and service alerts.
 
 UP Express is integrated through its separate official GTFS feed and Open Data realtime endpoints. GO and UP share station IDs (including Pearson's GO bus/UP station), so station boards and the map merge memberships without duplicating stations. UP trip numbers are namespaced as `UP-<number>`; the original service date is retained for overnight details. Each provider keeps its own feed and two day indexes. The combined map reports the overlap of the feeds' published coverage.
 
