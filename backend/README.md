@@ -1,5 +1,7 @@
 # GO Transit backend
 
+For hosting, see [Railway setup](./RAILWAY.md). The backend includes a Python 3.11 Docker image with a production entry point that uses Railway's `PORT`.
+
 FastAPI backend for Unionbound, an independent GO Transit and UP Express trip planner. It fetches Metrolinx data and exposes typed responses for stations, departures, journey planning, schedules, fares, and service alerts.
 
 UP Express is integrated through its separate official GTFS feed and Open Data realtime endpoints. GO and UP share station IDs (including Pearson's GO bus/UP station), so station boards and the map merge memberships without duplicating stations. UP trip numbers are namespaced as `UP-<number>`; the original service date is retained for overnight details. Each provider keeps its own feed and two day indexes. The combined map reports the overlap of the feeds' published coverage.
@@ -72,6 +74,16 @@ Invoke-RestMethod http://localhost:8000/api/stops
 With memory caching, health should report `status: ok`, `cache_backend: memory`, and `cache: ok`. Health checks the cache, not Metrolinx connectivity or API key validity. The stations request verifies the upstream data connection.
 
 For a physical phone, use `http://<your-computer-LAN-IP>:8000` as the API address. Connect the computer and phone to the same network and allow the backend through Windows Firewall on the private network if needed.
+
+## Rate limiting and trusted proxies
+
+`RATE_LIMIT_PER_MIN` defaults to 120 requests per client IP per 60-second window, shared across all `/api` endpoints. Excess requests return 429 with `Retry-After`. Health checks and API documentation are excluded. Clients sharing a public IP share the same limit.
+
+The application uses the ASGI client address and never reads raw `X-Forwarded-For`, `X-Real-IP`, or `Forwarded` headers to choose the rate-limit key. Uvicorn can resolve a real client IP through a trusted reverse proxy before the request reaches the app.
+
+For a public deployment, configure Uvicorn with `--proxy-headers --forwarded-allow-ips="<trusted-proxy-IP-or-CIDR>"`, using the actual addresses of your hosting proxy. Restrict direct backend access to that proxy and ensure it overwrites or appends the real connecting address to `X-Forwarded-For`. For multiple proxies, allow only the known proxy addresses; Uvicorn walks the chain from the trusted side. Do not use `*` on an endpoint accepting untrusted connections. Without a trusted proxy configuration, proxied users share the proxy's rate-limit bucket.
+
+For direct connections with no proxy, use `--no-proxy-headers`. Uvicorn otherwise trusts loopback (`127.0.0.1`) by default. Pass these settings as launch arguments or process environment variables, rather than relying on the app's later `.env` loading. See [Uvicorn's proxy deployment guidance](https://www.uvicorn.org/deployment/).
 
 ## Optional Redis caching
 

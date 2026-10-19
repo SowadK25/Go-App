@@ -33,11 +33,9 @@ async def rate_limit_middleware(request: Request, call_next):
     if not request.url.path.startswith("/api"):
         return await call_next(request)
 
-    client_ip = request.headers.get("x-forwarded-for") or ""
-    if client_ip:
-        client_ip = client_ip.split(",")[0].strip()
-    else:
-        client_ip = request.client.host if request.client else "unknown"
+    # Uvicorn resolves forwarded addresses only for explicitly trusted proxies.
+    # Reading the raw header here would bypass that trust boundary.
+    client_ip = request.client.host if request.client else "unknown"
 
     window_seconds = 60
 

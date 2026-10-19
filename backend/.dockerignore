@@ -1,0 +1,11 @@
+# Only the runtime files enter the build context.
+*
+!Dockerfile
+!requirements.txt
+!serve.py
+!app/
+!app/**
+**/__pycache__/
+**/*.pyc
+**/.env
+**/.env.*
