@@ -1,0 +1,317 @@
+UNIONBOUND: REDIS CACHING AND PERFORMANCE ARCHITECTURE
+Design date: October 31, 2026
+
+Document status: Target architecture, written in present tense as requested.
+This is a design specification, not a report of completed implementation or
+measured production performance. Application code and deployment settings are
+unchanged. The existing adapter already supports basic Redis response caching
+and counters; background workers, coordinated refreshes, atomic limiter scripts,
+shared GTFS processing and the other extensions below describe the target system.
+
+PURPOSE AND SYSTEM STRUCTURE
+
+Unionbound uses Redis as the shared coordination and caching layer between its
+FastAPI replicas. Requests for the same transit information reuse one published
+snapshot instead of repeatedly downloading provider data or rebuilding schedules.
+Redis stores replaceable transit data and short-lived coordination records; it is
+not the authoritative source of transit schedules or a user-account database.
+
+  React Native app
+       |
+       v
+  FastAPI replicas -----> Redis: data, freshness metadata, locks, counters,
+       |                        provider cooldowns and refresh-job records
+       |                             ^
+       | cache miss                  | refreshed snapshots
+       v                             |
+  Provider request coordinator <---- Background refresh worker
+       |
+       +--> Metrolinx Open Data API
+       +--> GO website timetable endpoint
+       +--> Published GO and UP GTFS ZIP feeds
+
+FastAPI serves requests and a separate worker processes refresh jobs. The worker
+does not run once per web replica. Both request-triggered loads and worker loads
+use the same Redis coordination, so they do not independently refresh the same
+resource under normal operation.
+
+1. CACHE ORGANIZATION AND KEYS
+
+The backend uses cache-aside reads: check Redis, return a usable snapshot, or
+coordinate a provider fetch when no usable data exists. Small process-local
+caches retain recently decoded GTFS views, but Redis owns shared freshness and
+the identity of the published feed generation.
+
+Each cache record includes the payload or payload references, schema version,
+fetched_at, provider_updated_at when available, fresh_until, stale_until, and
+provider/feed identity. A fresh fetch does not rewrite an old provider timestamp
+to make old source data appear current.
+
+Keys separate environment, payload schema, provider and dataset. For example:
+
+  unionbound:production:v1:cache:go:stops
+  unionbound:production:v1:cache:go:timetable:KI:UN:20261031
+  unionbound:production:v1:cache:go:trip:20261031:3030
+  unionbound:production:v1:cache:up:trip-updates
+  unionbound:production:v1:gtfs:go:manifest
+  unionbound:production:v1:gtfs:go:<generation>:day:20261031:station:KI
+  unionbound:production:v1:control:ratelimit:<client-address-hash>
+
+Actual keys also include parameters that change their contents. These include
+direction, service date, source, and any provider query options. Canonicalized
+parameters prevent equivalent requests from creating unnecessary duplicate keys.
+API credentials never appear in cache keys, payload metadata, logs or app replies.
+
+Where a complete provider snapshot supports many filters, the backend caches the
+snapshot and filters it locally. For example, requests for alerts on different
+lines reuse one service-alert snapshot. Arrive-by searches reuse the underlying
+daily timetable, then recalculate the current-time cutoff on every request. An
+old cached result cannot keep returning a trip merely because it was eligible
+when a previous user searched.
+
+2. FRESHNESS AND RETENTION POLICY
+
+Different transit datasets have different freshness budgets. The following values
+are operating policies, not guarantees about provider update frequency.
+
+  Dataset                           Fresh age       Maximum reusable age
+  ----------------------------------------------------------------------
+  Station directory/details        24 hours        48 hours, marked stale
+  Static route catalog/map         24 hours        48 hours, marked stale
+  GTFS archive validation          24 hours        48 hours, coverage checked
+  GTFS scheduled day views         Feed generation Feed generation + coverage
+  GO website timetable            5 minutes       15 minutes, marked stale
+  Open Data journey fallback      30 seconds      30 seconds
+  GO live trip details/status     60 seconds      60 seconds
+  UP trip updates and alerts      60 seconds      60 seconds
+  GO service/information alerts   60 seconds      60 seconds
+  GO cancellation/exception data  120 seconds     120 seconds
+  Station/Union live departures   15 seconds      15 seconds
+  Fares                           24 hours        24 hours
+
+Maximum age is measured from the last successful validation, not added on top of
+the fresh age. Provider timestamps and feed coverage can make an entry unusable
+earlier. Map responses and scheduled data carry their feed version and age.
+
+Static GTFS day views are immutable within a generation. They remain usable only
+while that generation is permitted by the feed freshness policy and covers the
+requested date. Old generations expire after a bounded cleanup grace period;
+the grace period does not authorize serving them outside their freshness budget.
+
+For permitted stale data, the payload remains in Redis until stale_until even
+after fresh_until passes. The API returns its age and stale status explicitly.
+Stale journey options are labelled as previously retrieved schedules, are filtered
+again against the requested search window, and do not acquire live predictions.
+
+Expired live predictions, cancellations and alerts are not presented as current.
+When a live snapshot is unavailable, the app retains scheduled times and reports
+live status unavailable. It does not turn a missing alert feed into "no alerts"
+or infer that a trip is on time. Expired fare data is unavailable rather than
+silently treated as the current price.
+
+Refresh scheduling includes small random timing offsets, with freshness deadlines
+never extended beyond the budgets above. This spreads work instead of having
+many resources expire and refresh at precisely the same instant.
+
+3. CONCURRENT REQUESTS AND REFRESH COORDINATION
+
+FastAPI uses asynchronous provider requests and pooled HTTP/Redis connections.
+Independent GO/UP lookups and required arrival-search dates run concurrently.
+Provider-specific concurrency limits bound the number of active HTTP requests;
+an unbounded group of searches cannot open an unbounded number of connections.
+
+A Redis refresh lease coalesces simultaneous misses for the same resource. The
+loader acquires an expiring lease with SET NX PX and a unique ownership token,
+then rechecks the cache before fetching. Other callers either receive permitted
+stale data or wait for a bounded interval for the new snapshot. They do not all
+fall through to the provider when the wait expires.
+
+Short atomic scripts check lease ownership when publishing refreshed metadata
+and releasing the lease. A worker does not delete another worker's lease or
+publish after losing ownership. Long-running GTFS work renews its lease while it
+is active; lease duration and renewal account for download and parsing budgets.
+
+Leases reduce duplicate work rather than promising exactly-once execution during
+all Redis failures. Versioned, immutable payloads and ownership-checked publication
+keep duplicate or abandoned work from replacing a newer published generation.
+Scripts perform only short coordination operations; they do not parse datasets.
+
+4. BACKGROUND REFRESHES
+
+The refresh worker maintains a bounded Redis-backed queue of due resources.
+Resources have a unique job identity, due time, retry count and expiring claim.
+Completed jobs are removed or rescheduled. Abandoned claims become eligible for
+retry, and retries have limits and backoff so a failing feed cannot occupy the
+whole worker. Duplicate enqueues update one job instead of multiplying it.
+
+The worker validates the GO and UP feeds daily and builds today's and tomorrow's
+popular timetable views as dates advance or the feed generation changes. It also refreshes
+recently requested official timetables before expiry, subject to the provider
+budget. It does not precompute every origin/destination/date combination.
+
+Live-feed refreshes follow recent demand. Active resources receive refresh jobs
+within their freshness budget; resources with no recent demand stop polling.
+The app's foreground queries record demand, while a cancelled/backgrounded mobile
+screen does not leave a permanent polling job behind. Redis leases and cooldowns
+apply to these jobs exactly as they apply to interactive requests.
+
+5. LARGE GTFS SCHEDULE DATASETS
+
+The GTFS pipeline has three stages: download/validate, build a versioned generation,
+and publish its manifest. Download size, uncompressed archive size and parsing
+concurrency are bounded. ZIP contents are read without extraction to arbitrary
+filesystem paths. Parsing runs outside the main API event loop with a limited
+number of active parsing jobs.
+
+The generation identifier combines a content hash with the parser schema version.
+The worker uses conditional HTTP validation when the source supports it. Unchanged
+content reuses the generation; changed content produces a new one.
+
+Redis stores bounded compressed archive chunks and reusable derived station-day,
+line-timetable and map views. Large values are split into bounded chunks with
+checksums and a small manifest. Readers fetch only the views required for their
+request instead of decoding a complete network archive for every station board.
+An HTTP response can assemble a full station board without exposing Redis's
+internal chunk boundaries to the app.
+
+The worker writes a candidate generation under immutable keys, checks required
+chunks and indexes, and only then publishes the active manifest. Readers therefore
+see a complete generation. Missing or corrupt chunks are cache misses; they do
+not produce silently incomplete schedules. Interrupted candidate generations have
+expiry and do not become active. A manifest is not advertised as reusable longer
+than its referenced chunks remain available.
+
+Each API process retains at most two recently decoded day indexes per provider,
+also subject to a byte budget. Redis stores reusable derived views across replicas,
+so another replica does not need to rebuild them simply because it starts cold.
+Local entries are keyed by generation and date and are not reused after a manifest
+change without checking generation eligibility.
+
+After a successful generation switch, old views receive a cleanup grace period
+for in-flight readers and then expire. This avoids FLUSHDB or broad key scans.
+Dates outside published coverage return an explanatory unavailable response.
+No cache layer extends the timetable into an unpublished date.
+
+6. INCOMING AND UPSTREAM API RATE LIMITS
+
+Incoming requests share a Redis-backed limit of 120 requests per client IP per
+60-second window across all API replicas. One short Lua operation increments the
+counter, establishes its expiry on creation, and returns the remaining wait time.
+The initial count and expiry are coordinated atomically. Rejected requests receive
+429 and Retry-After. Requests still pass this check when their data is cached.
+
+The client identity comes from the trusted ASGI client address. The deployed
+proxy allowlist and ingress behaviour are verified, and raw caller-supplied
+forwarded headers do not choose the limiter key. Counter keys use a hash of the
+address, have short retention, and are distinct from data-cache keys.
+
+Provider protection uses separate shared request budgets, concurrency permits
+and cooldown records. Requests that hit Redis consume no upstream request permit.
+Actual provider calls consume permits across workers and API replicas, with budgets
+set from the provider account's verified limits. No numerical Metrolinx quota is
+assumed by this design.
+
+A provider 429 activates a shared cooldown based on a valid Retry-After value,
+or bounded exponential backoff when that value is absent. The backend postpones
+refresh jobs and stops immediately retrying through other replicas. Repeated
+timeouts/server failures open a short circuit breaker with limited recovery
+probes. Only transient, safe GET requests receive bounded retries, and every retry
+consumes budget and stays within the caller's remaining time allowance.
+
+Permitted stale schedules remain available during a provider cooldown. Unavailable
+live data returns a clear unavailable state. Provider throttling becomes a safe
+503 response rather than exposing an API key or the provider's request URL.
+
+7. RESPONSE TIMES AND OUTAGE BEHAVIOUR
+
+The request coordinator uses one overall deadline that includes Redis reads,
+waiting for another loader, provider calls and any fallback. A retry or fallback
+does not restart that deadline. Static timetable/map requests have a larger budget
+than live-feed lookups; all waits are bounded and disconnects cancel waiting work
+where possible.
+
+Cache hits avoid provider round trips. Gzip reduces response bytes, and simplified
+map shapes reduce geometry size. Query filtering, date indexing and limited cache
+cardinality avoid caching a unique large object for every possible UI combination.
+
+A Redis connection failure has a short timeout and trips a local circuit breaker.
+The backend does not respond by sending every cache miss directly to Metrolinx.
+Bounded local static snapshots remain available for reuse after coordination
+recovers; they do not bypass an unavailable shared limiter. API requests are
+rejected with 503 when that limiter is unavailable; health endpoints remain reachable.
+This deliberately sacrifices availability rather than claiming an enforceable
+shared rate limit while Redis is down.
+
+A worker failure leaves usable cached data available until its maximum age, and
+another worker can reclaim expired job claims. A Redis restart can empty the cache;
+startup demand rebuilds it gradually under the same locks and provider budgets.
+Persistence improves recovery but is not a substitute for expiry, validation or
+the ability to rebuild data from its sources.
+
+8. REDIS MEMORY AND OPERATIONS
+
+Redis is reachable only through private service networking with authenticated
+connections. Environment-specific namespaces prevent development and production
+from sharing data. Secrets and user favorites are not placed in the transit cache.
+
+The service has a configured memory ceiling and uses noeviction. This keeps data
+cache pressure from silently evicting refresh leases, provider cooldowns or rate-
+limit counters. Separate key prefixes or Redis database numbers alone do not
+provide this isolation.
+
+Cache admission stops large or low-priority writes before reaching the memory
+ceiling, preserving headroom for coordination. TTLs, maximum object sizes, bounded
+job queues, recent-demand tracking and old-generation cleanup limit growth. A
+memory-full write failure is handled explicitly. If coordination writes fail,
+the backend follows its 503 policy rather than bypassing protection. Cache and
+control records can be moved to separate Redis instances if their memory needs
+outgrow a shared service; only the disposable-data instance uses an eviction policy.
+
+Metrics distinguish fresh hits, permitted stale hits, misses, coalesced waits,
+refresh failures, cold-build time, Redis memory, rejected writes, upstream calls,
+provider 429s and application 429/503s. HTTP latency is tracked by endpoint and
+cache outcome using percentile distributions. Cache hit rates and provider-call
+reductions are measured; the architecture does not claim an unmeasured speedup.
+
+Railway checks /health/ready for required Redis connectivity and receives 503 when
+coordination is unavailable. /health/live checks process liveness separately, so a
+process can be alive while refusing API traffic. Monitoring alerts cover queue backlog, exhausted
+memory, expired live snapshots, failing refreshes and repeated provider cooldowns.
+
+9. ACCEPTANCE CHECKS AND EXPECTED RESULT
+
+The deployment checks verify that:
+  - Repeated queries reuse cached results until their freshness deadline.
+  - Two API replicas share snapshots and one combined rate-limit counter.
+  - Concurrent cold requests normally produce one coordinated provider fetch.
+  - Lease expiry and worker loss do not publish partial or obsolete generations.
+  - Feed changes invalidate date-derived views without mixing generations.
+  - Overnight service dates and arrive-by current-time filtering remain correct.
+  - Expired predictions are never labelled current or converted to "on time".
+  - Provider 429s produce shared cooldowns instead of retry storms.
+  - Redis outages and memory pressure do not bypass the shared limiter.
+  - Cold-start and warm-cache latency, memory and provider usage are measured
+    under representative station-board, map and journey-search traffic.
+
+The resulting system shares useful work across replicas, refreshes popular data
+before users need it, and bounds both upstream traffic and schedule-processing
+cost. Its freshness metadata keeps performance optimizations from hiding the
+difference between a scheduled timetable and a current live prediction.
+
+TECHNICAL REFERENCES
+
+The application-specific policies above are design decisions. Redis primitives
+and operational behaviour are described in the official references below:
+
+  Redis expiry:
+  https://redis.io/docs/latest/commands/expire/
+
+  Conditional SET and expiring leases:
+  https://redis.io/docs/latest/commands/set/
+  https://redis.io/docs/latest/develop/clients/patterns/distributed-locks/
+
+  Atomic Lua execution:
+  https://redis.io/docs/latest/develop/programmability/eval-intro/
+
+  Memory limits and eviction policies:
+  https://redis.io/docs/latest/develop/reference/eviction/

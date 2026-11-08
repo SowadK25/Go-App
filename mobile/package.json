@@ -32,6 +32,8 @@
   "scripts": {
     "map:assets": "node scripts/build-map-assets.cjs",
     "start": "expo start",
+    "env:local": "node scripts/select-backend.cjs local",
+    "env:railway": "node scripts/select-backend.cjs railway",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",

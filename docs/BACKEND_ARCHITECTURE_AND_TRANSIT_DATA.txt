@@ -1,0 +1,353 @@
+UNIONBOUND: BACKEND ARCHITECTURE AND TRANSIT DATA
+Code reviewed: October 31, 2026
+
+This document describes the implementation in this repository. It is not a
+statement that every endpoint or upstream feed is currently healthy in production.
+Paths below are relative to the repository root.
+
+OVERVIEW
+
+Unionbound uses a FastAPI backend to combine several Metrolinx data sources into
+one JSON API for the React Native app. It uses BOTH public HTTP APIs and published
+GTFS files. There is no single source supplying every feature.
+
+The principal sources are:
+
+  1. Metrolinx Open Data API: station directory, station details, live predictions,
+     GO trip details, fares, alerts, service status, and a journey-search fallback.
+  2. Published GO Transit and UP Express GTFS ZIP feeds: complete scheduled station
+     departure boards, line timetables, route names, station coordinates and map
+     geometry. UP scheduled journeys are also built from its GTFS feed.
+  3. The HTTP timetable endpoint used by GO's website: the primary source for GO
+     point-to-point journey options, including transfers.
+
+The backend is an aggregation and adaptation layer. It does not maintain its own
+master transit timetable database or implement a general GO routing engine.
+
+REQUEST FLOW
+
+  React Native app
+       |
+       | HTTPS requests through mobile/src/api/transit.ts
+       v
+  FastAPI routes and input validation
+       |
+       +--> Cache lookup --> upstream HTTP API, when needed
+       |
+       +--> Cached GTFS archive --> date index / network parser
+       |
+       v
+  Transformations and journey-selection rules
+       |
+       v
+  Pydantic response models --> compact JSON --> app screens
+
+backend/app/main.py registers the routes, applies gzip compression, and runs the
+request rate limiter. HTTP calls use asynchronous httpx clients. Large GTFS parsing
+jobs run through asyncio.to_thread so they do not directly block the event loop.
+
+1. UPSTREAM DATA SOURCES
+
+Metrolinx Open Data
+  Base URL: https://api.openmetrolinx.com/OpenDataAPI/api/V1
+  Client: backend/app/clients/metrolinx.py
+
+  The client attaches the server's METROLINX_API_KEY as a request parameter.
+  The mobile app never needs this key. Representative upstream paths include:
+
+    Stop/All
+    Stop/Details/{stop_code}
+    Stop/NextService/{stop_code}
+    Schedule/Trip/{date}/{trip_number}
+    Schedule/Journey/{date}/{from}/{to}/{time}/{maximum}
+    ServiceataGlance/Trains/All and ServiceataGlance/Buses/All
+    ServiceUpdate/Exceptions/Train and ServiceUpdate/Exceptions/Bus
+    ServiceUpdate/ServiceAlert/All and ServiceUpdate/InformationAlert/All
+    ServiceUpdate/UnionDepartures/All
+    Fares/{from}/{to}, optionally with an operational day
+    UP/Gtfs/Feed/Alerts and UP/Gtfs/Feed/TripUpdates
+
+  The current UP integration consumes GTFS-Realtime-shaped JSON through these
+  Open Data endpoints. It does not directly download and decode a protobuf feed.
+  The client also defines generic GO GTFS-Realtime helper methods, but the main GO
+  live-status routes use ServiceataGlance and ServiceUpdate instead. Defining a
+  client method does not mean a screen calls it.
+
+Published GTFS Schedule feeds
+  GO: https://assets.metrolinx.com/raw/upload/Documents/Metrolinx/Open%20Data/GO-GTFS.zip
+  UP: https://assets.metrolinx.com/raw/upload/Documents/Metrolinx/Open%20Data/UP-GTFS.zip
+  Clients: backend/app/clients/gtfs.py and transit_gtfs.py
+
+  These are public ZIP downloads; the code does not attach the Open Data API key
+  to them. They contain CSV tables describing scheduled service:
+
+    stops.txt          Stop IDs, names, latitude and longitude.
+    routes.txt         Route codes, names, types and colours.
+    trips.txt          Trips linked to routes, service calendars and shapes.
+    stop_times.txt     Ordered stop visits and scheduled arrival/departure times.
+    calendar.txt       Weekly service patterns and their date ranges.
+    calendar_dates.txt Added and removed service on specific dates.
+    shapes.txt         Ordered coordinates describing route paths.
+    feed_info.txt      Feed version and coverage dates, when supplied.
+
+  The parsers read tables inside the ZIP without extracting files to disk. The
+  code limits compressed downloads to 40 MB and checks the total declared
+  uncompressed archive size against 250 MB before map/day parsing.
+
+GO website timetable
+  URL: https://api.metrolinx.com/external/go/schedules/en/timetable/all
+  Client: backend/app/clients/go_schedules.py
+
+  Requests include fromStop, toStop and date, with the date sent as YYYY-MM-DD.
+  This client sends no API key. It retrieves JSON directly; it does not scrape
+  rendered HTML or automate a browser. Treat this website-facing endpoint as an
+  external dependency whose schema or availability may change, rather than
+  assuming the same contract as the keyed Open Data API.
+
+2. STOPS AND STATION DIRECTORIES
+
+GET /api/stops starts with Open Data Stop/All. transform_stops() flattens the
+provider's nested Stations/Station structure into Stop objects:
+
+  LocationCode -> id
+  LocationName -> name
+  LocationType -> type
+  PublicStopId -> public_id
+
+The route adds missing UP stations using the UP GTFS network. Shared station
+codes are reused rather than duplicating those stations. Pearson's PA entry is
+labelled for both GO and UP. If the UP directory cannot load, the GO directory
+remains usable and a Pearson fallback entry can be supplied.
+
+GET /api/stops/{code}/details normally uses Open Data for location/address details.
+Pearson details use the UP GTFS coordinates. The transformer builds addresses from
+components and converts valid coordinate strings to numbers.
+
+GET /api/map/lines/{line_code}/stops uses GTFS network membership, not today's
+active timetable. This allows the Stations line filter to include a station even
+when it has no trips scheduled on the selected day. The map-derived directory can
+also supply names for GTFS stops missing from the Open Data catalog.
+
+3. FULL-DAY DEPARTURES AND LINE SCHEDULES
+
+GET /api/stops/{code}/departures?schedule_date=YYYYMMDD returns scheduled boarding
+departures for the selected calendar day, including departures earlier that day.
+It is separate from the live next-service endpoint.
+
+backend/app/utils/gtfs_departures.py builds a StationDayIndex:
+  - Determine active service IDs from weekly calendars.
+  - Apply service additions/removals in calendar_dates.txt.
+  - Join active trips to routes and their stop-time sequences.
+  - Include rail and bus route types (GTFS route_type 2 and 3).
+  - Exclude terminal arrivals and visits where pickup_type prohibits boarding.
+  - Index boarding visits by station code and sort departures by scheduled time.
+  - Return trip number, original service date, line, destination and remaining
+    stop timeline, so the app can open trip details from a departure row.
+
+GTFS service times can exceed 24:00:00. The parser considers the previous service
+day as well as the requested day and converts extended hours to calendar dates.
+For example, 25:10 on one service day belongs to 01:10 the following calendar day.
+It retains service_date so an overnight trip can still be looked up correctly.
+
+The Schedules screen uses these GTFS-backed endpoints:
+  GET /api/map/schedules/lines?schedule_date=...
+  GET /api/map/schedules/lines/{line_code}/{direction}?schedule_date=...
+
+backend/app/utils/gtfs_schedules.py groups date-indexed trips into lines, directions
+and variants. Line timetables contain ordered stops and departure-sorted trips.
+The line timetable list selects trips whose first stop falls on the requested
+calendar date; a station board additionally includes overnight visits from a
+previous service day.
+
+The backend also retains /api/schedules/lines and its direction/stop endpoints,
+which use Open Data. They are distinct from the GTFS-backed endpoints used by the
+current Schedules screen. GET /api/map/lines supplies a published route-name
+catalog that is independent of whether a route operates today.
+
+If a requested date is outside published feed coverage, the backend returns an
+explanatory 404 instead of inventing a timetable. The combined day loader can use
+one provider's covered date when the other provider reports it is outside range;
+other loading errors are not automatically treated as an empty timetable.
+
+4. JOURNEYS, TRANSFERS AND ARRIVE-BY SEARCH
+
+GET /api/journeys/{from}/{to}/{date}/{time} plans point-to-point journeys. Its
+search_mode is depart_at by default, or arrive_by. max_journeys defaults to five
+and is restricted to one through ten.
+
+For GO depart-at searches:
+  1. Fetch the official website timetable for the origin, destination and date.
+  2. Adapt its trip options and constituent lines into the app's journey model.
+  3. Keep options after the requested departure threshold.
+  4. Deduplicate, sort by departure then arrival, and apply the requested limit.
+  5. If the official fetch or transformation fails, request Open Data journey
+     options and adapt its different response structure to the same model.
+
+A valid empty official timetable stays empty; it does not trigger fallback.
+The fallback transformer removes a narrow redundant-transfer case: changing
+trains on the same line/direction at the same station when the same initial
+service has a direct option arriving no later. Different train/bus combinations
+and genuinely different journeys remain available even when slower.
+
+Arrive-by searches fetch the target day and previous day concurrently, adding
+the next day for targets at or after 23:30. They retain arrivals from one hour
+before through 30 minutes after the target and exclude departures already in the
+past using Toronto time. Results prioritize latest departure; a departure tie
+prefers earlier arrival. Filtering is repeated on cached data. The forward-only
+Open Data journey fallback is not used for GO arrive-by failures; those return
+503 with a suggestion to use Depart at.
+
+UP support adds a small, specific connection planner in utils/up_journeys.py:
+  - Direct UP journeys come from UP GTFS stop sequences.
+  - Airport connections combine GO timetable options with UP services at Weston,
+    Mount Dennis, Bloor or Union.
+  - Transfers require at least eight minutes, or twelve at Union, and at most
+    sixty minutes. The fastest interchange is retained for each service pair.
+  - GO/UP options are merged into the same response and sorted/limited again.
+
+This is targeted GO/UP connection logic, not an arbitrary multimodal shortest-path
+search over every GTFS route. Longer genuine options may also fall outside the
+API's requested result limit; retaining them is different from returning every
+possible journey.
+
+5. TRIP DETAILS AND LIVE DATA
+
+Scheduled service and live predictions are separate data products. A missing
+live prediction does not mean no scheduled service exists.
+
+GET /api/stops/{code}/next-service retrieves GO boarding predictions from Open Data
+and adds UP predictions at shared stations. The response retains scheduled and
+computed departure times separately. Platform selection prefers ActualPlatform
+over ScheduledPlatform when the provider supplies it.
+
+GET /api/schedules/trips/{number}?schedule_date=... normally uses Open Data
+Schedule/Trip. It returns per-stop scheduled/computed arrival and departure
+values, scheduled/actual track, status and update timestamps. UP-prefixed trip
+numbers instead use a UP GTFS timeline enriched with matching fresh UP updates.
+UP updates supply absolute event times or event-level delays relative to the
+scheduled time. Cancelled, skipped and NO_DATA events do not produce predictions.
+
+The UP adapter rejects deleted or stale trip updates; its freshness window is up
+to five minutes old with a one-minute future-clock allowance. It converts epoch
+timestamps to America/Toronto and matches service dates, including overnight
+lookups. UP trip numbers are namespaced as UP-<number> to avoid GO collisions.
+The adapter does not manufacture UP platform numbers.
+
+GET /api/service/trains and /buses adapt GO ServiceataGlance data. The /up route
+adapts UP trip updates to the same service model. Exception routes expose
+cancellations and other supplied service exceptions. Union departures combine
+GO's dedicated board with UP departures. Alerts combine GO service/information
+feeds with adapted UP alerts; unavailable_lines can identify a UP feed failure
+without discarding successfully retrieved GO alerts. Fares use Open Data; the
+app does not treat those GO fare results as an estimated combined GO/UP fare.
+
+The app performs much of the final live-to-scheduled matching and presentation.
+It matches services using trip, line, mode and relevant date, and joins stop-level
+predictions to the selected stops. AM/PM formatting, red/green changed times,
+scheduled-to-predicted arrows, badges and direct/transfer UI filters are mobile
+concerns. The backend journey response is not a fully merged live itinerary.
+
+6. MAP TRANSFORMATION
+
+utils/gtfs_map.py joins routes to trips, trips to shapes and stops to route
+memberships. It orders shape coordinates, validates coordinates, validates colour
+strings, and simplifies geometry with an approximately 25-metre tolerance. It
+normalizes the GT/KI route alias to KI. The published network is independent of
+today's service calendar and is not a live vehicle-location map.
+
+TransitGtfsClient combines GO and UP networks, merges memberships for shared stop
+IDs and reports the overlap of their feed coverage dates. Map responses include
+stations, lines, colours, coordinates, shapes, version/coverage metadata and a
+stale flag. A process can return its last successful map if a later refresh fails.
+
+Leaflet and OpenStreetMap are presentation layers in the app. The app loads street
+tiles directly; OpenStreetMap does not supply the transit schedules, station
+membership or GO/UP route geometry. Those overlays come from Metrolinx GTFS.
+
+7. NORMALIZED RESPONSE CONTRACT
+
+Most Open Data transformations live in backend/app/transformers.py. Source-specific
+GTFS, official timetable and UP adapters live under backend/app/utils/.
+
+Transformations flatten nested provider structures, normalize singleton-versus-
+list containers where needed, rename fields to the app's snake_case contract,
+convert numeric values, clean missing values, and retain scheduled/live fields
+separately. Pydantic models define and validate the JSON response shape.
+
+A journey has start/end times, duration, transfer_count and a trips array. Each
+item in trips is a leg, with its own service number, line, mode, boarding and
+destination codes, and ordered stops. A journey with transfers therefore contains
+multiple legs, rather than being the same thing as one GTFS trip.
+
+Request date/time validation accepts YYYYMMDD or YYYY-MM-DD, and HHMM or HH:MM,
+and rejects invalid dates/times. Toronto time is used for local-day calculations.
+Many generated timestamps are local strings without a UTC offset; some upstream
+stop clocks are preserved as clock-only strings. The API is not uniformly UTC or
+uniformly offset-bearing ISO 8601; consumers must respect each field's context.
+
+backend/scripts/generate_mobile_types.py turns FastAPI's OpenAPI schemas into
+mobile/src/api/generated.ts. mobile/src/api/transit.ts is the app's endpoint
+wrapper; mobile/src/api/client.ts handles the base URL, timeout, cancellation and
+HTTP errors. This keeps provider-specific payloads out of the app's screens.
+
+8. CACHING, HOSTING AND LIMITATIONS
+
+Backend data is generally fetched on demand and refreshed on the next request
+after its TTL expires. There is no scheduled bulk-import job refreshing all data
+in the background. Important cache durations in the current code are:
+
+  Stops, stop details, line schedules and fares: Open Data responses up to 24 hours.
+  Official GO website timetables: five minutes.
+  Open Data journey fallback: thirty seconds.
+  Station next-service and GO Union departures: fifteen seconds.
+  GO live trains/buses, GO trip details, GO alerts and UP live feeds: sixty seconds.
+  GO train/bus exceptions: two minutes.
+  Parsed GTFS network response: twenty-four hours.
+  Downloaded GTFS ZIP bytes: twenty-four hours per provider, per process.
+
+The JSON response cache can be memory or Redis. With memory, entries and rate
+limits are process-local and reset on restart. Redis shares cached JSON and
+rate-limit counters across processes. GTFS ZIP bytes, locks, last-good maps and
+the two most recently used day indexes per provider remain process-local even
+with Redis. The two-day index bound limits retention, not all possible cold-load
+latency. Mobile query caching and polling are additional, separate mechanisms.
+
+The Docker image uses Python 3.11, defaults to the memory cache and runs one
+Uvicorn worker through backend/serve.py. It listens on the injected PORT for
+Railway. The source does not require a persistent application database. Favorites,
+home/work stations and the tracked trip are stored on the phone.
+
+The default API rate limit is 120 requests per IP per 60-second window. It uses
+the ASGI client address; forwarded-IP trust belongs to Uvicorn's configured proxy
+allowlist. The production entry point rejects wildcard proxy trust. If the rate-
+limit store fails, the current middleware logs the failure and allows the request.
+Production proxy trust and actual deployed variables require deployment-specific
+verification; they cannot be inferred solely from these source files.
+
+Provider failures are mapped to safe API errors: connection failures generally
+become 502, timeouts 504, and provider rate limits 503. Our own rate limit returns
+429 with Retry-After. Response errors avoid exposing the upstream keyed URL.
+/health checks cache connectivity, not every feed or the validity of the provider
+API key; it can report degraded in a 200 response when its cache check fails.
+
+Coverage, live predictions and platform availability depend on the providers.
+Static GTFS does not prove that a service is currently running, and no fresh live
+record is not proof that a trip is on time. A GO website timetable change can
+affect planning even when Open Data or static station timetables are healthy.
+
+CODE AND SOURCE REFERENCES
+
+  backend/app/main.py, config.py and transformers.py
+  backend/app/clients/metrolinx.py, go_schedules.py, gtfs.py, transit_gtfs.py
+  backend/app/routes/stops.py, network_map.py, schedules.py, journeys.py
+  backend/app/routes/service.py, alerts.py, fares.py
+  backend/app/utils/gtfs_departures.py, gtfs_schedules.py, gtfs_map.py
+  backend/app/utils/official_journeys.py, journeys.py, up_journeys.py, up_express.py
+  backend/app/models/ and backend/app/utils/cache.py
+  mobile/src/api/ and mobile/src/utils/journeyPredictions.ts
+
+Official developer resources and feed downloads:
+  https://www.gotransit.com/en/partner-with-us/software-developers
+
+The upstream URLs above are the URLs configured in the source. The documentation
+review did not perform a live check of every provider endpoint or audit licensing.

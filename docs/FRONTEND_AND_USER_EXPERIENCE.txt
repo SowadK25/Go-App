@@ -1,0 +1,398 @@
+UNIONBOUND: FRONTEND AND USER EXPERIENCE
+Code reviewed: October 31, 2026
+
+This document describes screens and behaviours implemented in the current source
+code. It is separate from the proposed Redis architecture document and does not
+assume that design has been implemented. It is a source review, not a claim of
+completed usability testing or accessibility certification.
+
+OVERVIEW
+
+Unionbound is an independent GO Transit and UP Express companion built with
+Expo, React Native and TypeScript. It helps users find stations, browse departures,
+compare journeys, inspect stops and transfers, and keep a particular trip handy
+while travelling. It also provides service alerts, GO fare information and an
+interactive network map.
+
+The interface uses a green branded header, rounded cards, coloured line badges,
+clear time displays and a four-tab bottom navigation. Reusable components keep
+station rows, search controls, buttons, calendars and timelines consistent across
+screens. Styles are separated into style files; the embedded map uses its own CSS.
+
+1. SCREENS AND NAVIGATION
+
+The four bottom tabs are Home, Stations, Schedules and Alerts. Detail screens open
+above those tabs through a stack navigator, with a back action to return to the
+previous context.
+
+  Home
+    Trip planner, home/work shortcuts, tracked trip, service notices and network
+    summaries. Shortcuts open Stations, Schedules, Map and Union Departures.
+
+  Stations
+    Searchable station directory, rail-line filters and favourite-star controls.
+
+  Station Departures
+    A selected station's full-day departure board, date control, station address
+    when supplied, favourite action and station updates.
+
+  Schedules
+    Today's line timetables, a train/bus line selector, direction controls and
+    tappable scheduled trips.
+
+  Your Journey / Trip Results
+    Search summary, Trips and Fares tabs, journey filters and comparison cards.
+
+  Journey Details
+    A complete selected journey, transfer instructions, per-leg stop timelines,
+    available live predictions and the Track trip action.
+
+  Schedule Trip Details
+    Stops and times for a service opened from a timetable, station board or Union
+    departure board, with available platform and update information.
+
+  Union Departures
+    A dedicated upcoming departure board for Union, including GO and UP services.
+
+  Alerts / Service Alerts
+    Service and information notices, line selection, named bus routes and optional
+    filtering to the lines involved in the tracked journey.
+
+  Saved Stations
+    Home/work station settings, an alphabetical favourite-station list and a short
+    About Unionbound description. It opens from the header preferences button.
+
+  Map
+    Interactive GO/UP stations and route paths, station search, a Routes panel and
+    station popups leading to departures. Its internal route name is SystemMap,
+    but the label shown to users is Map.
+
+The header uses a preferences/sliders button on the left and an alerts bell on
+the right. Stations uses a location-pin icon; Map uses a folded-map icon, giving
+the two destinations different visual identities.
+
+2. SEARCHING FOR STATIONS
+
+Users open Stations from the bottom tab or the Home shortcut. Typing a station
+name or code filters the loaded directory immediately. Matching ignores case and
+surrounding whitespace, and results are sorted alphabetically.
+
+The directory offers All Lines and the published rail-line choices, including UP
+Express. Choosing a line loads its full published station membership, rather than
+restricting the directory to stations with departures at the current time. GO bus
+stops can also appear in the general directory; this rail-line filter is different
+from the train/bus selector used in Schedules.
+
+Matching favourites appear in a separate Favourites section above the remaining
+stations. Rows identify the station, show its transport icon and optional selected
+line badge, and provide a star and an open/departure action. Search and line
+filters also apply to the favourites section.
+
+Selecting a station opens that station's departure board. Users do not have to
+choose a destination just to see what leaves a station.
+
+The same searchable StationPicker is reused for journey origins/destinations and
+home/work settings. It opens in a full-screen selection panel with a close button,
+alphabetical results and clear loading, empty and error states. Choosing a station
+fills the invoking field, clears the search and closes the panel. Favourite-star
+actions are omitted inside this picker to keep selection focused on its task.
+
+3. VIEWING STATION DEPARTURES
+
+The station board defaults to today and shows boarding departures for the entire
+selected calendar day, to all destinations. Earlier departures remain included;
+this screen is not restricted to the next few live predictions.
+
+Users can change the day with the shared calendar, save/remove the station as a
+favourite, and pull down to refresh. The header displays the address and last-
+checked time when available. A virtualized list handles a potentially long day
+of departures without rendering every row at once.
+
+Each departure identifies its line, destination and scheduled time. For today's
+board, matching live predictions can add an updated time and platform. Future
+dates use their scheduled timetable without requesting today's station predictions.
+Live failures leave the scheduled board usable and show an explanatory message.
+
+Tapping a departure opens Schedule Trip Details. Its timeline starts at the
+selected boarding station and shows the remaining stops, rather than requiring
+the user to work through the service's earlier stops. The original service date
+is retained for overnight services even when the displayed calendar date differs.
+
+The board includes a Station Updates section with applicable notices. An empty
+board has a compact message, and the explanatory text about all-day departures is
+hidden when there are no results. This avoids a large, misleading empty layout.
+
+4. PLANNING A JOURNEY
+
+Home contains the Plan Your Trip card. The main interaction is:
+
+  Choose origin and destination
+       -> choose Depart at or Arrive by
+       -> choose date and time
+       -> Search Trips
+       -> compare results
+       -> open one journey for stops and transfers
+
+Each station field opens the reusable station picker and has a clear action.
+A swap control reverses origin and destination. Search Trips is disabled until
+both stations are chosen and different; identical stations produce a short
+instruction instead of an unnecessary API request.
+
+Home-to-work and work-to-home shortcuts fill the station fields from saved
+preferences. If those stations are not configured, the shortcut opens Saved
+Stations so the user can set them. Filling a shortcut does not automatically
+submit a search, leaving the date and time available for adjustment.
+
+The date control has an inline month calendar and a Today shortcut, without a
+separate year selector. Past days are disabled, and navigating backwards is
+restricted to the current month. Choosing another day preserves the chosen time.
+The time control requests a 12-hour native picker with 15-minute intervals; native
+picker behaviour can vary by platform. iPhone users have a Done action to close it.
+Time displays use AM/PM and an Eastern-time abbreviation for the relevant date.
+
+Depart-at results are sorted by departure time. Arrive-by results prioritize the
+latest departure and include scheduled arrivals from one hour before through
+30 minutes after the chosen target. Departures that have already left are removed
+from arrive-by results, including cached options as time advances. A result after
+the target carries an explanatory after-target badge. The screen states that
+live delays can affect the actual arrival.
+
+5. COMPARING RESULTS AND VIEWING FARES
+
+Trip Results shows the selected stations, date, time and search mode. Trips and
+Fares are separate segmented tabs, keeping fare information out of the main list
+of departure choices. The selection indicator animates between tabs.
+
+The Trips tab provides All, Direct and With transfers filters, with counts based
+on the returned eligible options. These filters operate on the loaded results;
+they do not request every possible direct or transfer journey from the provider.
+The app requests up to ten journey options for a search.
+
+Journey cards summarize endpoint times, duration, transfer count, transport legs,
+line identities and available live status. Overnight results can display a
+different departure date so a previous-day option is not mistaken for today's.
+Users tap any card to inspect the actual stops and connection sequence.
+
+The Fares tab loads GO fare options for the station pair and travel date. It
+shows the supplied rider category, payment method, fare type, amount and currency.
+For UP journeys or Pearson searches, it explains the separate UP fare and offers
+an external link to official UP payment information. It does not claim that a GO
+fare covers UP or invent a combined GO/UP price. Ticket purchasing is not included.
+
+6. TRIP DETAILS AND TIME PRESENTATION
+
+Journey Details separates a journey into its individual train/bus legs. Each leg
+has a line badge, destination/headsign, service number, status and stop timeline.
+A transfer card between legs identifies where to change and the next service.
+
+Timelines distinguish Board here, Intermediate stop and Get off here. They are
+limited to the portion of a service used by the journey. Station names are resolved
+from the directory, with stop codes retained as a fallback when names are missing.
+
+The shared StopTime component displays one time when the schedule and estimate
+match, or only one is available. When they differ, it displays:
+
+  scheduled time -> updated time
+
+The updated value is red when later and green when earlier. Screen-reader text
+also identifies scheduled/estimated and early/late information, so the meaning is
+not communicated solely by colour. Arrival and departure predictions are matched
+to their own events; a general trip delay is not simply added to every stop time.
+
+Platforms appear when the backend supplies an actual or scheduled platform,
+preferring actual information. Missing and placeholder platform values are hidden.
+Skipped-stop and cancellation indicators are shown when supplied. Missing live
+data is not treated as evidence that a trip is on time.
+
+Schedule Trip Details uses the same timeline and time-display components. When
+live details fail, a timeline supplied by the original station board or line
+timetable remains available where possible. Not every entry point supplies that
+fallback, and some provider responses have no stop details; the screen explains
+those cases instead of fabricating a timeline.
+
+7. TRACKING ONE JOURNEY
+
+From Journey Details, Track trip pins that dated journey to Home. Tracking another
+journey replaces the existing one, with explanatory text before the action.
+The app keeps one active tracked trip rather than a separate saved-journey library.
+
+The Home card shows the route, date, endpoint times, line badges, available status
+and boarding platforms, including transfer boarding platforms when available.
+Tapping the card reopens full journey details. Its close button, or Stop tracking
+trip in details, removes tracking.
+
+Tracking is saved locally across restarts and expires two hours after scheduled
+arrival. The extra time allows a delayed service to remain accessible. Live
+queries are limited to relevant travel windows and foreground screens.
+
+While a trip is tracked, the header bell shows the count of applicable service
+and information alerts across its legs. An alert covering several tracked lines
+is counted once. Tapping the bell opens that group of lines' alerts, and Show All
+Lines clears the filter. When alert data is unavailable, the count is hidden
+rather than presenting an unknown count as zero.
+
+Tracking does not follow the phone's GPS location, guarantee continuous monitoring
+while the app is closed, or send background notifications. Notification support
+was removed and is not part of the current frontend.
+
+8. SAVING FAVOURITES AND HOME/WORK STATIONS
+
+Users toggle the star beside a station to add or remove it from favourites. They
+can also use Save to Favorites / Remove from Favorites on its departure screen.
+
+The header preferences control opens Saved Stations. It contains:
+  - Home and work selectors using the shared station picker.
+  - Clear station actions with red text on a light red background, visually
+    distinguishing removal from the green station-selection controls.
+  - An alphabetical favourite list. Tapping a station opens its departures;
+    tapping its star removes the favourite.
+
+AsyncStorage retains home/work stations, favourites and the tracked trip on the
+device. Settings load before editing controls become active, and writes are
+serialized to preserve the order of changes. Loading or saving failures produce
+messages; a failed write does not falsely claim that changes survived a restart.
+
+There is no account requirement or cloud synchronization. Preferences on another
+phone are independent, and clearing app storage or reinstalling can remove them.
+
+9. LINE SCHEDULES AND UNION DEPARTURES
+
+Schedules answers "What services run on this line today?" The user opens Select
+Line, searches by line name or number, and can narrow the picker to All, Trains or
+Buses. Rows show codes and names, giving numbered bus routes more context.
+The picker is a searchable vertical list rather than a horizontal row of all lines.
+
+After selecting a line, the user chooses a direction using the supplied destination
+or variant description. The screen lists today's scheduled services and their
+origins/destinations. Tapping one opens its stop timeline. Unlike the station
+departure board, the current Schedules screen has no travel-date picker.
+
+Union Departures opens separately from Home. It is a focused board of upcoming
+GO/UP services from Union with times, line colours/badges, boarding information
+and platforms when reported. It supports pull-to-refresh and shows a last-checked
+time. A departure opens its service details. It is not repeated under each line
+timetable and does not have its own bottom tab.
+
+10. ALERTS
+
+Alerts combines service and information notices. Users can view all lines or open
+the line picker to select a train/bus line. Bus route names from the published
+catalog supplement route numbers, including lines that are not operating today.
+
+Alert cards identify their type, affected lines, title, message and posted time
+when available. Provider markup is converted to readable text. A tracked trip can
+open a preselected group of lines; manually choosing one line replaces that group.
+The screen distinguishes no reported notices from an unavailable feed, and allows
+refresh/retry when updates cannot be loaded.
+
+11. INTERACTING WITH THE MAP
+
+Users open Map from Home. The map starts with train lines visible and bus routes
+off, reducing the initial number of overlays. Its top controls are a station-name/
+code search field and one Routes button summarizing visible services.
+
+Routes opens a bottom panel containing coloured train-line choices with names,
+selected counts, a searchable bus section, Show all/Hide all for each category,
+and Done. Changes apply immediately and remain selected when the panel closes.
+Done closes the panel; it is not a separate save operation. These selections are
+screen state, not device-persisted preferences across app restarts.
+
+Users can select multiple lines and any combination of bus routes. Shared stations
+remain visible while they belong to at least one visible line. The footer shows
+visible station/line counts, an information button, and a reset that reveals all
+lines, including buses. If no stations match, the app suggests changing filters.
+
+The map supports dragging and pinch zoom. Changing a route filter preserves the
+current centre and zoom; changing the station search fits the matching stations.
+Tapping a route focuses its visible line selection. Station markers use train/bus
+symbols, and labels become visible according to zoom and available space.
+
+Tapping a marker opens a station card with its name, transport type, line badges
+and View departures. That button opens the same station board used by Stations,
+connecting spatial browsing with the rest of the app.
+
+Leaflet renders the map, with OpenStreetMap street tiles and Metrolinx GTFS station/
+route overlays. Native builds host it in a WebView; web uses an iframe. Leaflet's
+runtime and styles are bundled, but street tiles require network access. A tile
+failure warns the user while retaining available station and route overlays.
+The information panel explains controls, data coverage and attribution.
+
+This is a published network map, not a map of live train/bus positions, a walking-
+directions service or a fully downloadable offline map.
+
+12. RESPONSIVENESS, MOTION AND ACCESSIBILITY
+
+TanStack Query shares loaded data between components and distinguishes loading,
+failure, paused/offline and successful empty responses. Cached data can remain
+visible with notices where the screen supports it. Pull-to-refresh and Retry
+actions let users explicitly request another attempt.
+
+Station lists, pickers, route-filter lists and station departure boards use
+virtualized lists. Not every journey/timetable screen is virtualized. Searches
+within an already loaded directory or route list filter locally, avoiding an API
+request for every keystroke.
+
+Live updates follow screen focus and app activity. Relevant journey status and
+predictions generally refresh every minute; exception feeds refresh every two
+minutes, and the Union board every thirty seconds while subscribed. Future or
+completed journeys do not continuously poll live feeds. The Fares tab pauses the
+journey-status/prediction subscriptions that are only needed for Trips.
+
+Cached query results are held in memory; the app does not persist its complete
+transit query cache for guaranteed offline use after restarting. Persisted
+preferences and a tracked journey are separate from this query cache.
+
+Reusable press controls provide subtle spring feedback. Segmented controls use
+an animated selection indicator, and selection panels slide into view. The
+MotionProvider respects the operating system's reduced-motion setting for the
+custom press and segmented-control animations. This does not imply every native
+navigation/modal animation is disabled by that preference.
+
+Controls provide accessibility labels, roles and selected/checked states where
+applicable. Icon-only actions have descriptive names. Selection panels account
+for safe areas, and the route sheet includes keyboard avoidance on iOS. Web map
+markers and routes include keyboard actions. These are implemented accessibility
+features, not a substitute for a full screen-reader and large-text audit.
+
+13. SCOPE AND REPRESENTATIVE FLOWS
+
+Typical flows are:
+
+  Find a departure:
+    Stations -> search/filter -> station -> choose day -> departure -> Stops & Times
+
+  Plan and monitor a commute:
+    Home -> choose stations/date/time -> Search Trips -> filter results -> journey
+    -> Track trip -> Home tracked card -> current journey details
+
+  Reuse preferred stations:
+    Star a station -> Saved Stations -> favourite -> departures
+    Set Home/Work -> Home commute shortcut -> review time -> Search Trips
+
+  Explore geographically:
+    Home -> Map -> Routes/search -> station popup -> View departures
+
+  Check a disruption:
+    Alerts -> choose line -> read notice
+    or tracked-trip bell -> notices for that journey's lines
+
+Implemented scope covers core transit browsing, planning and local preferences.
+It does not include ticket sales, accounts, cloud-synced favourites, an AI assistant,
+a saved-trip collection, background trip notifications, shared journey links,
+recent-search history or guaranteed offline timetable downloads.
+
+CODE REFERENCES
+
+  mobile/src/navigation/AppNavigator.tsx and types.ts
+  mobile/src/screens/HomeScreen.tsx, StationsScreen.tsx, DeparturesScreen.tsx
+  mobile/src/screens/SchedulesScreen.tsx, UnionDeparturesScreen.tsx
+  mobile/src/screens/TripResultsScreen.tsx, JourneyDetailsScreen.tsx
+  mobile/src/screens/ScheduleTripDetailsScreen.tsx, AlertsScreen.tsx
+  mobile/src/screens/PreferencesScreen.tsx, SystemMapScreen.tsx
+  mobile/src/components/transit/TripPlanner.tsx, StationPicker.tsx, TripDateField.tsx
+  mobile/src/components/transit/StopTimeline.tsx, StopTime.tsx, TrackedTripCard.tsx
+  mobile/src/components/map/MapLineFilters.tsx, TransitMap.tsx, mapRuntime.js
+  mobile/src/components/layout/AppHeader.tsx, SelectionModal.tsx, BottomSheet.tsx
+  mobile/src/components/ui/SegmentedTabs.tsx and MotionPressable.tsx
+  mobile/src/storage/PreferencesProvider.tsx and preferences.ts
+  mobile/src/query/QueryProvider.tsx, hooks/, api/, motion/ and theme/

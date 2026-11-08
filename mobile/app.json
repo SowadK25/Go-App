@@ -8,6 +8,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
+      "bundleIdentifier": "com.sowadk25.unionbound",
       "supportsTablet": true
     },
     "android": {
@@ -22,6 +23,15 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-status-bar", "@react-native-community/datetimepicker"]
+    "plugins": [
+      "expo-status-bar",
+      "@react-native-community/datetimepicker"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "a8209ef7-0ac0-4e7e-be30-dcb8f1dd4776"
+      }
+    },
+    "owner": "dawadguy"
   }
 }
