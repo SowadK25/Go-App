@@ -6,7 +6,7 @@ import { attributionUrl, handleMapMessage, type TransitMapProps } from './mapTyp
 import { styles } from './TransitMap.styles';
 
 export function TransitMap(props: TransitMapProps) {
-  const ref = useRef<WebView>(null);
+  const ref = useRef<WebView<object>>(null);
   const [ready, setReady] = useState(false);
   const source = useMemo(() => ({ html: createMapDocument(props.network) }), [props.network]);
   useEffect(() => {
@@ -16,7 +16,7 @@ export function TransitMap(props: TransitMapProps) {
       );
   }, [props.filter, ready]);
   return (
-    <WebView
+    <WebView<object>
       ref={ref}
       source={source}
       style={styles.map}

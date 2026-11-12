@@ -40,7 +40,7 @@ Edit `.env.local` to set `EXPO_PUBLIC_API_URL` to your backend address:
 
 Use `ipconfig` to find your Wi-Fi IPv4 address. For physical devices, use the same network as the computer and allow the backend on your private network if Windows Firewall blocks it. A Metro tunnel only tunnels Expo traffic; the backend must still be reachable separately.
 
-The project uses Expo SDK 57. Install a compatible Expo Go build from <https://expo.dev/go>. Windows can run an Android emulator or serve the app to a physical iPhone; the iOS simulator requires macOS. For custom native modules later, use an Expo development build.
+The project uses Expo SDK 58. Install a compatible Expo Go build from <https://expo.dev/go>. Windows can run an Android emulator or serve the app to a physical Android phone or iPhone; the iOS simulator requires macOS. For custom native modules later, use an Expo development build.
 
 The app reads `process.env.EXPO_PUBLIC_API_URL` through Expo's environment variable support. These variables are public; the Metrolinx key belongs only in the backend. Restart Expo and reload the app after changing the address. See [Expo environment variables](https://docs.expo.dev/guides/environment-variables/).
 
