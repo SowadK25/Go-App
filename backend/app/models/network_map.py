@@ -26,3 +26,22 @@ class NetworkMap(BaseModel):
     stale: bool = False
     stops: list[MapStop]
     lines: list[MapLine]
+
+
+class MapTrainPosition(BaseModel):
+    id: str
+    trip_number: str
+    service_date: str
+    line_code: str
+    display: str
+    latitude: float
+    longitude: float
+    updated_at: str
+    stop_code: str | None = None
+    status: str = "reported"
+
+
+class MapTrainPositions(BaseModel):
+    available: bool
+    updated_at: str | None = None
+    trains: list[MapTrainPosition] = Field(default_factory=list)

@@ -7,14 +7,24 @@ import { frameStyle } from './TransitMap.web.styles';
 export function TransitMap(props: TransitMapProps) {
   const ref = useRef<HTMLIFrameElement>(null);
   const html = useMemo(() => createMapDocument(props.network), [props.network]);
-  const sendFilter = () =>
+  const sendFilter = () => {
     ref.current?.contentWindow?.postMessage(
       { source: 'transitflow-app', type: 'filter', filter: props.filter },
       '*',
     );
+    ref.current?.contentWindow?.postMessage(
+      {
+        source: 'transitflow-app',
+        type: 'trains',
+        trains: props.trains ?? [],
+        reducedMotion: !!props.reducedMotion,
+      },
+      '*',
+    );
+  };
   useEffect(() => {
     sendFilter();
-  }, [props.filter]);
+  }, [props.filter, props.trains, props.reducedMotion]);
   useEffect(() => {
     const receive = (event: MessageEvent) => {
       if (event.source !== ref.current?.contentWindow || event.data?.source !== 'transitflow-map')

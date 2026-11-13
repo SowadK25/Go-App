@@ -3,6 +3,8 @@ import { colors } from '../theme/tokens';
 export const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   controls: { padding: 12, gap: 8 },
+  controlRow: { flexDirection: 'row', gap: 8, alignItems: 'stretch' },
+  routeControl: { flex: 1 },
   map: { flex: 1, overflow: 'hidden' },
   footer: {
     flexDirection: 'row',
@@ -12,6 +14,7 @@ export const styles = StyleSheet.create({
     gap: 8,
   },
   caption: { color: colors.muted, fontSize: 11, flex: 1 },
+  refreshControl: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   warning: { color: colors.muted, fontSize: 12, paddingHorizontal: 12, paddingBottom: 8 },
   info: { padding: 16, gap: 16 },
   heading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

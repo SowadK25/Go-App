@@ -46,3 +46,26 @@ test('multi-line visibility keeps shared stations and removes hidden-only statio
   assert.equal(filters.toggleMapLine(selection,'30').length,0);
   assert.equal(selection.join(','),'30');
 });
+
+test('live train bridge accepts only current known train IDs', () => {
+  const selected = [];
+  const train = { id:'20301112:KI:3030', updated_at:new Date().toISOString(), latitude:43.5, longitude:-79.5 };
+  const props = { network, trains:[train], onSelectTrain:item=>selected.push(item.id) };
+  bridge.handleMapMessage({source:'transitflow-map',type:'select-train',trainId:'unknown'}, props);
+  bridge.handleMapMessage({source:'other',type:'select-train',trainId:train.id}, props);
+  bridge.handleMapMessage({source:'transitflow-map',type:'select-train',trainId:train.id}, props);
+  assert.deepEqual(selected, [train.id]);
+  train.updated_at = new Date(Date.now()-181000).toISOString();
+  bridge.handleMapMessage({source:'transitflow-map',type:'select-train',trainId:train.id}, props);
+  assert.equal(selected.length,1);
+});
+
+test('reported train positions expire using timestamps and reject placeholder coordinates', () => {
+  const now = Date.now();
+  const train = {updated_at:new Date(now-180000).toISOString(),latitude:43.5,longitude:-79.5};
+  assert.equal(bridge.recentTrainPosition(train,now),true);
+  assert.equal(bridge.recentTrainPosition(train,now+1),false);
+  assert.equal(bridge.recentTrainPosition({...train,updated_at:'invalid'},now),false);
+  assert.equal(bridge.recentTrainPosition({...train,latitude:0,longitude:0},now),false);
+  assert.equal(bridge.recentTrainPosition({...train,updated_at:new Date(now+61000).toISOString()},now),false);
+});

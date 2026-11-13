@@ -16,6 +16,7 @@ from app.utils.cache import InMemoryCache
 class LiveCacheTests(unittest.IsolatedAsyncioTestCase):
     async def test_reuses_upstream_data_until_live_cache_expires(self):
         for endpoint, lifetime in [
+            ("Gtfs/Feed/VehiclePosition", 60),
             ("ServiceataGlance/Trains/All", 60),
             ("ServiceataGlance/Buses/All", 60),
             ("ServiceUpdate/Exceptions/Train", 120),

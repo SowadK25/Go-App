@@ -1,7 +1,9 @@
 import logging
 from fastapi import APIRouter, HTTPException, Path, Query
 from app.clients.transit_gtfs import TransitGtfsClient
-from app.models.network_map import NetworkMap
+from app.clients.metrolinx import MetrolinxClient
+from app.models.network_map import NetworkMap, MapTrainPositions
+from app.utils.train_positions import transform_train_positions
 from app.models.stops import Stop
 from app.models.schedules import LinesAllResponse, LineScheduleResponse, LineSummary
 from app.utils.utils import normalize_date, toronto_today
@@ -10,6 +12,16 @@ from app.utils.gtfs_departures import ScheduleDateUnavailable
 router = APIRouter(prefix="/api/map", tags=["map"])
 client = TransitGtfsClient()
 logger = logging.getLogger(__name__)
+live_client = MetrolinxClient()
+
+
+@router.get("/trains", response_model=MapTrainPositions)
+async def get_train_positions():
+    try:
+        return transform_train_positions(await live_client.get_gtfs_vehicle_positions())
+    except Exception as exc:
+        logger.warning("Train positions unavailable: %s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="Live train positions are temporarily unavailable.") from None
 
 
 @router.get("/schedules/lines", response_model=LinesAllResponse)

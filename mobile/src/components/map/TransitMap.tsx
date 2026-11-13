@@ -15,6 +15,12 @@ export function TransitMap(props: TransitMapProps) {
         `window.TransitMap.setFilter(${scriptJson(props.filter)});true;`,
       );
   }, [props.filter, ready]);
+  useEffect(() => {
+    if (ready)
+      ref.current?.injectJavaScript(
+        `window.TransitMap.setTrains(${scriptJson(props.trains ?? [])},${!!props.reducedMotion});true;`,
+      );
+  }, [props.trains, props.reducedMotion, ready]);
   return (
     <WebView<object>
       ref={ref}

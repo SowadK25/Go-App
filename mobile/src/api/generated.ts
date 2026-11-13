@@ -18,6 +18,8 @@ export type LineSummary = { "code": string; "name": string; "vehicle_types"?: Ar
 export type LinesAllResponse = { "date": string; "lines"?: Array<LineSummary>; };
 export type MapLine = { "code": string; "name": string; "color": string; "vehicle_type": string; "shapes"?: Array<Array<Array<number>>>; };
 export type MapStop = { "id": string; "name": string; "type": string; "latitude": number; "longitude": number; "line_codes"?: Array<string>; };
+export type MapTrainPosition = { "id": string; "trip_number": string; "service_date": string; "line_code": string; "display": string; "latitude": number; "longitude": number; "updated_at": string; "stop_code"?: (string | null); "status"?: string; };
+export type MapTrainPositions = { "available": boolean; "updated_at"?: (string | null); "trains"?: Array<MapTrainPosition>; };
 export type NetworkMap = { "source"?: string; "feed_version"?: (string | null); "valid_from"?: (string | null); "valid_until"?: (string | null); "stale"?: boolean; "stops": Array<MapStop>; "lines": Array<MapLine>; };
 export type NextService = { "stop_code": string; "lines": Array<NextServiceLine>; };
 export type NextServiceLine = { "line_code": string; "line_name": string; "service_type": string; "direction_name": string; "scheduled_departure_time": string; "computed_departure_time"?: (string | null); "departure_status"?: (string | null); "platform_number"?: (string | null); "trip_order"?: (number | null); "trip_number"?: (string | null); "update_time"?: (string | null); "status": string; "latitude"?: (number | null); "longitude"?: (number | null); };
@@ -54,6 +56,7 @@ export interface GetResponses {
   "/api/map/network": NetworkMap;
   "/api/map/schedules/lines": LinesAllResponse;
   "/api/map/schedules/lines/{line_code}/{direction}": LineScheduleResponse;
+  "/api/map/trains": MapTrainPositions;
   "/api/schedules/lines": LinesAllResponse;
   "/api/schedules/lines/{line_code}/{direction}": LineScheduleResponse;
   "/api/schedules/lines/{line_code}/{direction}/stops": LineStopsResponse;

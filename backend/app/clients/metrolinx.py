@@ -17,6 +17,7 @@ class MetrolinxClient:
 
     def _cache_ttl(self, endpoint: str) -> Optional[int]:
         cache_rules = [
+            ("Gtfs/Feed/VehiclePosition", 60),
             ("UP/Gtfs/Feed/Alerts", 60),
             ("UP/Gtfs/Feed/TripUpdates", 60),
             ("UP/Gtfs/Feed/VehiclePosition", 60),

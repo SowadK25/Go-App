@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
@@ -9,14 +9,18 @@ import { transitApi } from '../api/transit';
 import { Screen } from '../components/layout/Screen';
 import { SelectionModal } from '../components/layout/SelectionModal';
 import { MapLineFilters } from '../components/map/MapLineFilters';
+import { MapTrainControl } from '../components/map/MapTrainControl';
 import { TransitMap } from '../components/map/TransitMap';
 import type { MapFilter } from '../components/map/mapTypes';
 import { SearchField } from '../components/transit/SearchField';
 import { IconButton } from '../components/ui/IconButton';
 import { RequestState } from '../components/RequestState';
 import { visibleMapLines, visibleMapStops, toggleMapLine } from '../utils/networkMap';
-import { serviceDate } from '../utils/transit';
+import { serviceDate, torontoDateTime, checkedTime } from '../utils/transit';
 import { styles } from './SystemMapScreen.styles';
+import { useMapTrains } from '../hooks/useMapTrains';
+import { useReducedMotion } from '../motion/MotionProvider';
+import { colors } from '../theme/tokens';
 
 export function SystemMapScreen({
   navigation,
@@ -41,10 +45,26 @@ export function SystemMapScreen({
   const [search, setSearch] = useState('');
   const [info, setInfo] = useState(false);
   const [tileError, setTileError] = useState(false);
+  const [showTrains, setShowTrains] = useState(true);
+  const reducedMotion = useReducedMotion();
   const filter = useMemo<MapFilter>(
     () => ({ mode: 'all', hiddenLineCodes, search }),
     [hiddenLineCodes, search],
   );
+  const trains = useMapTrains(network.data, filter, showTrains);
+  const positionsUnavailable =
+    trains.isError || trains.fetchStatus === 'paused' || trains.data?.available === false;
+  const trainSummary = !showTrains
+    ? 'Off'
+    : !trains.hasVisibleLines
+      ? 'No GO lines shown'
+      : positionsUnavailable
+        ? 'Unavailable'
+        : trains.isFetching
+          ? 'Updating...'
+          : !trains.trains.length && trains.reportsExpired
+            ? 'Refresh needed'
+            : `${trains.trains.length} GO train${trains.trains.length === 1 ? '' : 's'}`;
   const selectLine = (code: string) => {
     const line = network.data?.lines.find((item) => item.code === code);
     if (line) {
@@ -62,20 +82,25 @@ export function SystemMapScreen({
             onChange={setSearch}
             placeholder="Find a station on the map..."
           />
-          <MapLineFilters
-            lines={network.data?.lines ?? []}
-            hiddenCodes={hiddenLineCodes}
-            onToggle={(code) =>
-              setHiddenLineCodes((current) => toggleMapLine(current ?? defaultHidden, code))
-            }
-            onSetVisible={(codes, visible) =>
-              setHiddenLineCodes((current) =>
-                visible
-                  ? (current ?? defaultHidden).filter((code) => !codes.includes(code))
-                  : [...new Set([...(current ?? defaultHidden), ...codes])],
-              )
-            }
-          />
+          <View style={styles.controlRow}>
+            <View style={styles.routeControl}>
+              <MapLineFilters
+                lines={network.data?.lines ?? []}
+                hiddenCodes={hiddenLineCodes}
+                onToggle={(code) =>
+                  setHiddenLineCodes((current) => toggleMapLine(current ?? defaultHidden, code))
+                }
+                onSetVisible={(codes, visible) =>
+                  setHiddenLineCodes((current) =>
+                    visible
+                      ? (current ?? defaultHidden).filter((code) => !codes.includes(code))
+                      : [...new Set([...(current ?? defaultHidden), ...codes])],
+                  )
+                }
+              />
+            </View>
+            <MapTrainControl enabled={showTrains} onChange={setShowTrains} summary={trainSummary} />
+          </View>
         </View>
         {network.isPending && (
           <RequestState
@@ -97,6 +122,11 @@ export function SystemMapScreen({
         )}
         {network.data && (
           <>
+            {showTrains && trains.hasVisibleLines && positionsUnavailable && (
+              <Text style={styles.warning}>
+                Live train positions are unavailable. The station map is still available.
+              </Text>
+            )}
             {!visibleMapStops(network.data, filter).length && (
               <Text style={styles.warning}>
                 No stations match these filters. Turn on a line or change your search.
@@ -106,6 +136,17 @@ export function SystemMapScreen({
               <TransitMap
                 network={network.data}
                 filter={filter}
+                trains={trains.trains}
+                reducedMotion={reducedMotion}
+                onSelectTrain={(train) =>
+                  navigation.navigate('ScheduleTripDetails', {
+                    tripNumber: train.trip_number,
+                    title: train.display,
+                    lineCode: train.line_code,
+                    date: train.service_date,
+                    displayDate: torontoDateTime().date,
+                  })
+                }
                 onSelectLine={selectLine}
                 onSelectStop={(id) => {
                   const stop = network.data?.stops.find((item) => item.id === id);
@@ -121,7 +162,27 @@ export function SystemMapScreen({
                 {visibleMapStops(network.data, filter).length === 1 ? '' : 's'} ·{' '}
                 {visibleMapLines(network.data, filter).length} line
                 {visibleMapLines(network.data, filter).length === 1 ? '' : 's'}
+                {showTrains &&
+                  !!trains.dataUpdatedAt &&
+                  `\nTrains checked ${checkedTime(trains.dataUpdatedAt)}`}
               </Text>
+              {showTrains && trains.hasVisibleLines && (
+                <View style={styles.refreshControl}>
+                  {trains.isFetching ? (
+                    <ActivityIndicator
+                      accessibilityLabel="Refreshing train positions"
+                      size="small"
+                      color={colors.primary}
+                    />
+                  ) : (
+                    <IconButton
+                      name="refresh-cw"
+                      label="Refresh train positions"
+                      onPress={() => void trains.refetch()}
+                    />
+                  )}
+                </View>
+              )}
               {hiddenLineCodes.length > 0 && (
                 <IconButton
                   name="rotate-ccw"
@@ -150,11 +211,20 @@ export function SystemMapScreen({
             <Text style={styles.paragraph}>
               Tap a station to view departures. Open Routes to show or hide train lines and search
               bus routes. Choose any combination, then tap Done. Tap a route to focus on it. Search
-              by station name or code. Pinch to zoom and drag to explore.
+              by station name or code. White circles mark stations; zoom in to reveal more stops and
+              names. Nearby trains form a pulsing group with a count. Tap a group to zoom in; trains
+              sharing a location can be selected from a list at closer zoom levels. Pinch to zoom
+              and drag to explore.
             </Text>
             <Text style={styles.paragraph}>
-              The map shows published GO train, bus, and UP Express routes. It is a network
-              overview, not a live vehicle map; check schedules for service on your travel date.
+              The map shows published GO train, bus, and UP Express routes. Pulsing train icons show
+              recently reported GO train positions, refreshed every five minutes while this map is
+              active. Use the refresh button at the bottom to check sooner. Tap a train for its
+              latest report and stops. Small arrows point approximately toward a train's reported
+              next stop; they are hidden for groups, stopped trains, or unclear directions. Reports
+              older than three minutes are hidden, so trains can disappear before the next automatic
+              check. These are reported positions, not continuously tracked movement. UP Express and
+              bus vehicle positions are not shown. Check schedules for service on your travel date.
             </Text>
             <Text style={styles.paragraph}>
               Transit data: Metrolinx. Feed coverage: {serviceDate(network.data?.valid_from ?? '')}{' '}
